@@ -33,9 +33,7 @@ CARTPOLE_CFG = ArticulationCfg(
             stabilization_threshold=0.001,
         ),
     ),
-    init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 2.0), joint_pos={"slider_to_cart": 0.0, "cart_to_pole": 0.0}
-    ),
+    init_state=ArticulationCfg.InitialStateCfg(pos=(0.0, 0.0, 2.0), joint_pos={"slider_to_cart": 0.0, "cart_to_pole": 0.0}),
     actuators={
         "cart_actuator": ImplicitActuatorCfg(
             joint_names_expr=["slider_to_cart"],

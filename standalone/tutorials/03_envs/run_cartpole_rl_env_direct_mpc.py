@@ -46,19 +46,17 @@ mpc.reset(targetTrajectories)
 
 
 import torch
-from omni.isaac.lab.envs import DirectRLEnv
 from omni.isaac.lab_tasks.direct.cartpole.cartpole_env import CartpoleEnvCfg
 from omni.isaac.lab_tasks.direct.cartpole.cartpole_env import CartpoleEnv
 
 
 def main():
-    # create environment configuration
+    # Setup environment
     env_cfg = CartpoleEnvCfg()
-    #env_cfg.scene.num_envs = args_cli.num_envs
-    # setup RL environment
+    env_cfg.scene.num_envs = args_cli.num_envs
     env = CartpoleEnv(cfg=env_cfg)
 
-    # simulate physics
+    # Simulation loop
     count = 0
     while simulation_app.is_running():
         with torch.inference_mode():
@@ -85,23 +83,17 @@ def main():
             x_dot = obs["policy"][0][3].item()
             theta_dot = obs["policy"][0][1].item()
             current_state = np.array([-theta, x, -theta_dot, x_dot])
-            print(current_state)
+            if count % 10 == 0:
+                print(current_state)
             # compute control action
             control, predicted_state = compute_mpc_control(mpc, current_state)
             # apply control action
-            #joint_effort = torch.tensor(control[0])
-            #joint_effort = joint_effort.view(1, 1)
             control = control.astype(np.float32)
             joint_effort = torch.tensor(control[0])
             joint_effort = joint_effort.view(1, 1)
             # step the environment
             obs, rew, terminated, truncated, info = env.step(joint_effort)
-            # print current orientation of pole
-            #print("[Env 0]: Pole joint: ", obs["policy"][0][1].item())
-            # update counter
             count += 1
-
-    # close the environment
     env.close()
 
 

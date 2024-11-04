@@ -1,13 +1,6 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Clause
-
 from __future__ import annotations
-
 import gymnasium as gym
 import torch
-
 import omni.isaac.lab.envs.mdp as mdp
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import Articulation, ArticulationCfg
@@ -19,10 +12,7 @@ from omni.isaac.lab.sensors import ContactSensor, ContactSensorCfg, RayCaster, R
 from omni.isaac.lab.sim import SimulationCfg
 from omni.isaac.lab.terrains import TerrainImporterCfg
 from omni.isaac.lab.utils import configclass
-
-##
 # Pre-defined configs
-##
 from omni.isaac.lab_assets.anymal import ANYMAL_C_CFG  # isort: skip
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 

@@ -17,7 +17,7 @@ from omni.isaac.lab.utils.math import sample_uniform
 class CartpoleEnvCfg(DirectRLEnvCfg):
     # env
     decimation = 4
-    episode_length_s = 50.0
+    episode_length_s = 500.0
     action_scale = 1  # [N]
     action_space = 1
     observation_space = 4
@@ -32,11 +32,11 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     pole_dof_name = "cart_to_pole"
 
     # scene
-    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=1, env_spacing=4.0, replicate_physics=True)
+    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=32, env_spacing=4.0, replicate_physics=True)
 
     # reset
-    max_cart_pos = 10.0  # the cart is reset if it exceeds that position [m]
-    initial_pole_angle_range = [3.13,3.15]  # the range in which the pole angle is sampled from on reset [rad]
+    max_cart_pos = 100.0  # the cart is reset if it exceeds that position [m]
+    initial_pole_angle_range = [-3.14,3.14]  # the range in which the pole angle is sampled from on reset [rad]
 
     # reward weights
     rew_scale_alive = 1.0
@@ -123,9 +123,15 @@ class CartpoleEnv(DirectRLEnv):
 
         joint_pos = self.cartpole.data.default_joint_pos[env_ids]
         #joint_pos[:, self._pole_dof_idx] += sample_uniform(
-        #    self.cfg.initial_pole_angle_range[0] * math.pi,
-        #    self.cfg.initial_pole_angle_range[1] * math.pi,
+        #    self.cfg.initial_pole_angle_range[0],
+        #    self.cfg.initial_pole_angle_range[1],
         #    joint_pos[:, self._pole_dof_idx].shape,
+        #    joint_pos.device,
+        #)
+        #joint_pos[:, self._cart_dof_idx] += sample_uniform(
+        #    -0.1,
+        #    0.1,
+        #    joint_pos[:, self._cart_dof_idx].shape,
         #    joint_pos.device,
         #)
         joint_pos[:, self._pole_dof_idx] = 3.14
