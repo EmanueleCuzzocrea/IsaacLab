@@ -13,6 +13,44 @@ app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 
+# Import mpc
+import numpy as np
+import os
+import rospkg
+import matplotlib.pyplot as plt
+from ocs2_mobile_manipulator import mpc_interface
+from ocs2_mobile_manipulator import (
+    scalar_array,
+    vector_array,
+    TargetTrajectories,
+)
+from MobileManipulatorPyBindingTest import compute_mpc_control
+
+# Path of the package
+packageDir = rospkg.RosPack().get_path('ocs2_mobile_manipulator')
+taskFile = os.path.join(packageDir, 'config/franka/task.info')
+libFolder = os.path.join(packageDir, 'auto_generated')
+urdfDir = rospkg.RosPack().get_path('ocs2_robotic_assets')
+urdf_ = os.path.join(urdfDir, 'resources/mobile_manipulator/franka/urdf/panda.urdf')
+
+# Initialize MPC interface
+mpc = mpc_interface(taskFile, libFolder, urdf_)
+
+# State and input dimensions
+stateDim = 7
+inputDim = 7
+
+# Set the goal
+desiredTimeTraj = scalar_array()
+desiredTimeTraj.push_back(0.0)
+desiredInputTraj = vector_array()
+desiredInputTraj.push_back(np.zeros(inputDim))
+desiredStateTraj = vector_array()
+desiredStateTraj.push_back(np.array([0.5, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]))
+targetTrajectories = TargetTrajectories(desiredTimeTraj, desiredStateTraj, desiredInputTraj)
+mpc.reset(targetTrajectories)
+
+
 import torch
 import omni.isaac.lab.sim as sim_utils
 from omni.isaac.lab.assets import AssetBaseCfg
@@ -25,7 +63,7 @@ from omni.isaac.lab.utils import configclass
 from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR
 from omni.isaac.lab.utils.math import subtract_frame_transforms
 # Pre-defined configs
-from omni.isaac.lab_assets import FRANKA_PANDA_HIGH_PD_CFG, UR10_CFG  # isort:skip
+from omni.isaac.lab_assets import FRANKA_PANDA_CFG, UR10_CFG  # isort:skip
 
 
 @configclass
@@ -52,7 +90,7 @@ class TableTopSceneCfg(InteractiveSceneCfg):
 
     # articulation
     if args_cli.robot == "franka_panda":
-        robot = FRANKA_PANDA_HIGH_PD_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        robot = FRANKA_PANDA_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
     elif args_cli.robot == "ur10":
         robot = UR10_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
     else:
@@ -62,26 +100,16 @@ class TableTopSceneCfg(InteractiveSceneCfg):
 def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
     robot = scene["robot"]
 
-    # Create controller
-    diff_ik_cfg = DifferentialIKControllerCfg(command_type="pose", use_relative_mode=False, ik_method="dls")
-    diff_ik_controller = DifferentialIKController(diff_ik_cfg, num_envs=scene.num_envs, device=sim.device)
-
     # Markers
     frame_marker_cfg = FRAME_MARKER_CFG.copy()
     frame_marker_cfg.markers["frame"].scale = (0.1, 0.1, 0.1)
     ee_marker = VisualizationMarkers(frame_marker_cfg.replace(prim_path="/Visuals/ee_current"))
     goal_marker = VisualizationMarkers(frame_marker_cfg.replace(prim_path="/Visuals/ee_goal"))
 
-    # Define goals for the arm
-    ee_goals = [
-        [0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0],
-    ]
+    ee_goals = [[0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0]]
     ee_goals = torch.tensor(ee_goals, device=sim.device)
-    # Track the given command
-    current_goal_idx = 0
-    # Create buffers to store actions
-    ik_commands = torch.zeros(scene.num_envs, diff_ik_controller.action_dim, device=robot.device)
-    ik_commands[:] = ee_goals[current_goal_idx]
+    ik_commands = torch.zeros(scene.num_envs, 7, device=robot.device)
+    ik_commands[:] = ee_goals[0]
 
     # Specify robot-specific parameters
     if args_cli.robot == "franka_panda":
@@ -92,13 +120,6 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
         raise ValueError(f"Robot {args_cli.robot} is not supported. Valid: franka_panda, ur10")
     # Resolving the scene entities
     robot_entity_cfg.resolve(scene)
-    # Obtain the frame index of the end-effector
-    # For a fixed base robot, the frame index is one less than the body index. This is because
-    # the root body is not included in the returned Jacobians.
-    if robot.is_fixed_base:
-        ee_jacobi_idx = robot_entity_cfg.body_ids[0] - 1
-    else:
-        ee_jacobi_idx = robot_entity_cfg.body_ids[0]
 
     # Define simulation stepping
     sim_dt = sim.get_physics_dt()
@@ -106,42 +127,39 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
     # Simulation loop
     while simulation_app.is_running():
         # reset
-        if count % 1500 == 0:
-            # reset time
+        if count % 150 == 0:
+            desiredTimeTraj = scalar_array()
+            desiredTimeTraj.push_back(0.0)
+            desiredInputTraj = vector_array()
+            desiredInputTraj.push_back(np.zeros(inputDim))
+            desiredStateTraj = vector_array()
+            desiredStateTraj.push_back(np.array([0.5, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0]))
+            targetTrajectories = TargetTrajectories(desiredTimeTraj, desiredStateTraj, desiredInputTraj)
+            mpc.reset(targetTrajectories)
+
             count = 0
-            # reset joint state
             joint_pos = robot.data.default_joint_pos.clone()
             joint_vel = robot.data.default_joint_vel.clone()
             robot.write_joint_state_to_sim(joint_pos, joint_vel)
             robot.reset()
-            # reset actions
-            ik_commands[:] = ee_goals[current_goal_idx]
-            joint_pos_des = joint_pos[:, robot_entity_cfg.joint_ids].clone()
-            # reset controller
-            diff_ik_controller.reset()
-            diff_ik_controller.set_command(ik_commands)
-            # change goal
-            current_goal_idx = (current_goal_idx + 1) % len(ee_goals)
-        else:
-            # obtain quantities from simulation
-            jacobian = robot.root_physx_view.get_jacobians()[:, ee_jacobi_idx, :, robot_entity_cfg.joint_ids]
-            ee_pose_w = robot.data.body_state_w[:, robot_entity_cfg.body_ids[0], 0:7]
-            root_pose_w = robot.data.root_state_w[:, 0:7]
-            joint_pos = robot.data.joint_pos[:, robot_entity_cfg.joint_ids]
-            # compute frame in root frame
-            ee_pos_b, ee_quat_b = subtract_frame_transforms(
-                root_pose_w[:, 0:3], root_pose_w[:, 3:7], ee_pose_w[:, 0:3], ee_pose_w[:, 3:7]
-            )
-            # compute the joint commands
-            joint_pos_des = diff_ik_controller.compute(ee_pos_b, ee_quat_b, jacobian, joint_pos)
-            print(ee_pos_b)
-            print(ee_quat_b)
-
-        # apply actions
-        robot.set_joint_position_target(joint_pos_des, joint_ids=robot_entity_cfg.joint_ids)
+        joint_pos_ = robot.data.joint_pos[:, robot_entity_cfg.joint_ids].clone()
+        joint1 = joint_pos_[0][0].item()
+        joint2 = joint_pos_[0][1].item()
+        joint3 = joint_pos_[0][2].item()
+        joint4 = joint_pos_[0][3].item()
+        joint5 = joint_pos_[0][4].item()
+        joint6 = joint_pos_[0][5].item()
+        joint7 = joint_pos_[0][6].item()
+        current_state = np.array([joint1, joint2, joint3, joint4, joint5, joint6, joint7])
+        print(current_state)
+        # compute control action
+        control, predicted_state = compute_mpc_control(mpc, current_state)
+        control = control.astype(np.float32)
+        # apply control action
+        velocities = torch.tensor([control[0], control[1], control[2], control[3], control[4], control[5], control[6]], device=sim.device)
+        robot.set_joint_velocity_target(velocities, joint_ids=robot_entity_cfg.joint_ids)
+        # write data to sim
         scene.write_data_to_sim()
-        
-        # perform step
         sim.step()
         count += 1
         scene.update(sim_dt)

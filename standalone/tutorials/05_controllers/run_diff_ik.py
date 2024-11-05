@@ -81,11 +81,7 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
     goal_marker = VisualizationMarkers(frame_marker_cfg.replace(prim_path="/Visuals/ee_goal"))
 
     # Define goals for the arm
-    ee_goals = [
-        [0.5, 0.5, 0.7, 0.707, 0, 0.707, 0],
-        [0.5, -0.4, 0.6, 0.707, 0.707, 0.0, 0.0],
-        [0.5, 0, 0.5, 0.0, 1.0, 0.0, 0.0],
-    ]
+    ee_goals = [[0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0]]
     ee_goals = torch.tensor(ee_goals, device=sim.device)
     # Track the given command
     current_goal_idx = 0
@@ -142,6 +138,9 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
             ee_pos_b, ee_quat_b = subtract_frame_transforms(
                 root_pose_w[:, 0:3], root_pose_w[:, 3:7], ee_pose_w[:, 0:3], ee_pose_w[:, 3:7]
             )
+            joint_pos_ = robot.data.joint_pos.clone()
+            print("joint pos correetti: ", joint_pos)
+            print("joint pos: ", joint_pos_)
             # compute the joint commands
             joint_pos_des = diff_ik_controller.compute(ee_pos_b, ee_quat_b, jacobian, joint_pos)
 
