@@ -1,12 +1,4 @@
-"""
-This script demonstrates how to use the differential inverse kinematics controller with the simulator.
-
-The differential IK controller can be configured in different modes. It uses the Jacobians computed by
-PhysX. This helps perform parallelized computation of the inverse kinematics.
-
-# Usage
-./isaaclab.sh -p source/standalone/tutorials/05_controllers/ik_control.py
-"""
+'''run_mpc.py'''
 
 import argparse
 from omni.isaac.lab.app import AppLauncher
@@ -82,9 +74,7 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
 
     # Define goals for the arm
     ee_goals = [
-        [0.5, 0.5, 0.7, 0.707, 0, 0.707, 0],
-        [0.5, -0.4, 0.6, 0.707, 0.707, 0.0, 0.0],
-        [0.5, 0, 0.5, 0.0, 1.0, 0.0, 0.0],
+        [0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0],
     ]
     ee_goals = torch.tensor(ee_goals, device=sim.device)
     # Track the given command
@@ -116,7 +106,7 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
     # Simulation loop
     while simulation_app.is_running():
         # reset
-        if count % 150 == 0:
+        if count % 1500 == 0:
             # reset time
             count = 0
             # reset joint state
@@ -144,6 +134,8 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
             )
             # compute the joint commands
             joint_pos_des = diff_ik_controller.compute(ee_pos_b, ee_quat_b, jacobian, joint_pos)
+            print(ee_pos_b)
+            print(ee_quat_b)
 
         # apply actions
         robot.set_joint_position_target(joint_pos_des, joint_ids=robot_entity_cfg.joint_ids)

@@ -1,8 +1,3 @@
-# Copyright (c) 2022-2024, The Isaac Lab Project Developers.
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Clause
-
 """Configuration for the Franka Emika robots.
 
 The following configurations are available:
@@ -47,6 +42,18 @@ FRANKA_PANDA_CFG = ArticulationCfg(
             "panda_finger_joint.*": 0.04,
         },
     ),
+    #init_state=ArticulationCfg.InitialStateCfg(
+    #    joint_pos={
+    #        "panda_joint1": 0.0,
+    #        "panda_joint2": 0.81,
+    #        "panda_joint3": 0.0,
+    #        "panda_joint4": -0.46,
+    #        "panda_joint5": 3.14,
+    #        "panda_joint6": 2.1,
+    #        "panda_joint7": 0.78,
+    #        "panda_finger_joint.*": 0.04,
+    #    },
+    #),
     actuators={
         "panda_shoulder": ImplicitActuatorCfg(
             joint_names_expr=["panda_joint[1-4]"],
