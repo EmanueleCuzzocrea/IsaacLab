@@ -16,12 +16,15 @@ from omni.isaac.lab.utils.math import sample_uniform
 @configclass
 class CartpoleEnvCfg(DirectRLEnvCfg):
     # env
-    decimation = 4
-    episode_length_s = 500.0
-    action_scale = 1  # [N]
+    #decimation = 2
+    decimation = 4  # mpc
+    #episode_length_s = 5.0
+    episode_length_s = 500.0    # mpc
+    #action_scale = 100.0  # [N]
+    action_scale = 1  # mpc
     action_space = 1
     observation_space = 4
-    state_space = 0
+    state_space = 0    
 
     # simulation
     sim: SimulationCfg = SimulationCfg(dt=0.005, render_interval=decimation)
@@ -35,16 +38,15 @@ class CartpoleEnvCfg(DirectRLEnvCfg):
     scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=32, env_spacing=4.0, replicate_physics=True)
 
     # reset
-    max_cart_pos = 100.0  # the cart is reset if it exceeds that position [m]
-    initial_pole_angle_range = [-3.14,3.14]  # the range in which the pole angle is sampled from on reset [rad]
+    max_cart_pos = 3.0  # the cart is reset if it exceeds that position [m]
+    initial_pole_angle_range = [-0.25, 0.25]  # the range in which the pole angle is sampled from on reset [rad]
 
     # reward weights
     rew_scale_alive = 1.0
     rew_scale_terminated = -2.0
     rew_scale_pole_pos = -1.0
-    rew_scale_cart_vel = -0.01
+    rew_scale_cart_vel = -0.1
     rew_scale_pole_vel = -0.005
-
 
 class CartpoleEnv(DirectRLEnv):
     cfg: CartpoleEnvCfg
@@ -113,6 +115,7 @@ class CartpoleEnv(DirectRLEnv):
 
         time_out = self.episode_length_buf >= self.max_episode_length - 1
         out_of_bounds = torch.any(torch.abs(self.joint_pos[:, self._cart_dof_idx]) > self.cfg.max_cart_pos, dim=1)
+        # mpc
         #out_of_bounds = out_of_bounds | torch.any(torch.abs(self.joint_pos[:, self._pole_dof_idx]) > math.pi / 2, dim=1)
         return out_of_bounds, time_out
 
@@ -122,9 +125,12 @@ class CartpoleEnv(DirectRLEnv):
         super()._reset_idx(env_ids)
 
         joint_pos = self.cartpole.data.default_joint_pos[env_ids]
+        # mpc
         #joint_pos[:, self._pole_dof_idx] += sample_uniform(
-        #    self.cfg.initial_pole_angle_range[0],
-        #    self.cfg.initial_pole_angle_range[1],
+        #    self.cfg.initial_pole_angle_range[0] * math.pi,
+        #    self.cfg.initial_pole_angle_range[1] * math.pi,
+        #    #self.cfg.initial_pole_angle_range[0],
+        #    #self.cfg.initial_pole_angle_range[1],
         #    joint_pos[:, self._pole_dof_idx].shape,
         #    joint_pos.device,
         #)

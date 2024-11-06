@@ -106,6 +106,7 @@ def run_simulator(sim: sim_utils.SimulationContext, scene: InteractiveScene):
     ee_marker = VisualizationMarkers(frame_marker_cfg.replace(prim_path="/Visuals/ee_current"))
     goal_marker = VisualizationMarkers(frame_marker_cfg.replace(prim_path="/Visuals/ee_goal"))
 
+    # Set goal
     ee_goals = [[0.5, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0]]
     ee_goals = torch.tensor(ee_goals, device=sim.device)
     ik_commands = torch.zeros(scene.num_envs, 7, device=robot.device)
