@@ -19,6 +19,7 @@ from omni.isaac.lab.actuators import ActuatorNetLSTMCfg, DCMotorCfg
 from omni.isaac.lab.assets.articulation import ArticulationCfg
 from omni.isaac.lab.sensors import RayCasterCfg
 from omni.isaac.lab.utils.assets import ISAACLAB_NUCLEUS_DIR
+from omni.isaac.lab.actuators import ImplicitActuatorCfg
 
 from .velodyne import VELODYNE_VLP_16_RAYCASTER_CFG
 
@@ -88,7 +89,6 @@ ANYMAL_B_CFG = ArticulationCfg(
 ANYMAL_C_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=f"{ISAACLAB_NUCLEUS_DIR}/Robots/ANYbotics/ANYmal-C/anymal_c.usd",
-        #usd_path=f"/home/emanuele/Pictures/a/anymal_c/anymal_c.usd",
         # usd_path=f"{ISAAC_NUCLEUS_DIR}/Robots/ANYbotics/anymal_instanceable.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
@@ -124,6 +124,7 @@ ANYMAL_C_CFG = ArticulationCfg(
 ANYMAL_D_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
         usd_path=f"{ISAACLAB_NUCLEUS_DIR}/Robots/ANYbotics/ANYmal-D/anymal_d.usd",
+        #usd_path=f"/home/emanuele/isaac/IsaacLab/source/extensions/omni.isaac.lab_assets/data/Robots/ANYbotics/anymal_dl.usd",
         # usd_path=f"{ISAACLAB_NUCLEUS_DIR}/Robots/ANYbotics/ANYmal-D/anymal_d_minimal.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
@@ -159,6 +160,69 @@ Note:
     Since we don't have a publicly available actuator network for ANYmal-D, we use the same network as ANYmal-C.
     This may impact the sim-to-real transfer performance.
 """
+
+ANYMAL_DL_CFG = ArticulationCfg(
+    spawn=sim_utils.UsdFileCfg(
+        usd_path=f"/home/emanuele/isaac/IsaacLab/source/extensions/omni.isaac.lab_assets/data/Robots/ANYbotics/anymal_dl.usd",
+        activate_contact_sensors=True,
+        rigid_props=sim_utils.RigidBodyPropertiesCfg(
+            disable_gravity=False,
+            retain_accelerations=False,
+            linear_damping=0.0,
+            angular_damping=0.0,
+            max_linear_velocity=1000.0,
+            max_angular_velocity=1000.0,
+            max_depenetration_velocity=1.0,
+        ),
+        articulation_props=sim_utils.ArticulationRootPropertiesCfg(
+            enabled_self_collisions=True, solver_position_iteration_count=4, solver_velocity_iteration_count=0
+        ),
+    ),
+    init_state=ArticulationCfg.InitialStateCfg(
+        pos=(0.0, 0.0, 0.6),
+        joint_pos={
+            ".*HAA": 0.0,  # all HAA
+            ".*F_HFE": 0.4,  # both front HFE
+            ".*H_HFE": -0.4,  # both hind HFE
+            ".*F_KFE": -0.8,  # both front KFE
+            ".*H_KFE": 0.8,  # both hind KFE
+            "panda_joint1": 0.0,
+            "panda_joint2": -0.569,
+            "panda_joint3": 0.0,
+            "panda_joint4": -2.810,
+            "panda_joint5": 0.0,
+            "panda_joint6": 3.037,
+            "panda_joint7": 0.741,
+            "panda_finger_joint.*": 0.04,
+        },
+    ),
+    actuators={"legs": ANYDRIVE_3_LSTM_ACTUATOR_CFG,
+        "panda_shoulder": ImplicitActuatorCfg(
+            joint_names_expr=["panda_joint[1-4]"],
+            effort_limit=87.0,
+            velocity_limit=2.175,
+            stiffness=0.0,
+            damping=100.0,
+        ),
+        "panda_forearm": ImplicitActuatorCfg(
+            joint_names_expr=["panda_joint[5-7]"],
+            effort_limit=12.0,
+            velocity_limit=2.61,
+            stiffness=0.0,
+            damping=100.0,
+        ),
+        "panda_hand": ImplicitActuatorCfg(
+            joint_names_expr=["panda_finger_joint.*"],
+            effort_limit=200.0,
+            velocity_limit=0.2,
+            stiffness=0.0,
+            damping=100.0,
+        ),
+    },
+    soft_joint_pos_limit_factor=0.95,
+)
+"""Configuration of ANYmal-DL robot using actuator-net."""
+
 
 
 ##

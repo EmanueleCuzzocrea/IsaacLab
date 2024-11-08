@@ -12,10 +12,48 @@ from omni.isaac.lab.sensors import ContactSensor, ContactSensorCfg, RayCaster, R
 from omni.isaac.lab.sim import SimulationCfg
 from omni.isaac.lab.terrains import TerrainImporterCfg
 from omni.isaac.lab.utils import configclass
+import math
+import random
 # Pre-defined configs
 from omni.isaac.lab_assets.anymal import ANYMAL_C_CFG  # isort: skip
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 
+# mpc
+import numpy as np
+import os
+import rospkg
+import matplotlib.pyplot as plt
+from ocs2_mobile_manipulator import mpc_interface
+from ocs2_mobile_manipulator import (
+    scalar_array,
+    vector_array,
+    TargetTrajectories,
+)
+from MobileManipulatorPyBindingTest import compute_mpc_control
+
+# Path of the package
+packageDir = rospkg.RosPack().get_path('ocs2_mobile_manipulator')
+taskFile = os.path.join(packageDir, 'config/franka/task.info')
+libFolder = os.path.join(packageDir, 'auto_generated')
+urdfDir = rospkg.RosPack().get_path('ocs2_robotic_assets')
+urdf_ = os.path.join(urdfDir, 'resources/mobile_manipulator/franka/urdf/panda.urdf')
+
+# Initialize MPC interface
+mpc = mpc_interface(taskFile, libFolder, urdf_)
+
+# State and input dimensions
+stateDim = 15
+inputDim = 15
+
+# Set the goal
+desiredTimeTraj = scalar_array()
+desiredTimeTraj.push_back(0.0)
+desiredInputTraj = vector_array()
+desiredInputTraj.push_back(np.zeros(inputDim))
+desiredStateTraj = vector_array()
+desiredStateTraj.push_back(np.array([10.0, 0.0, 0.3, 0.0, 0.0, 1.0, 1.0]))
+targetTrajectories = TargetTrajectories(desiredTimeTraj, desiredStateTraj, desiredInputTraj)
+mpc.reset(targetTrajectories)
 
 @configclass
 class EventCfg:
@@ -47,7 +85,8 @@ class EventCfg:
 @configclass
 class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     # env
-    episode_length_s = 20.0
+    #episode_length_s = 20.0
+    episode_length_s = 100.0
     decimation = 4
     action_scale = 0.5
     action_space = 12
@@ -205,12 +244,32 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)
 
     def _get_observations(self) -> dict:
+        root_pos_ = self._robot.data.root_pos_w
+        root_quat_ = self._robot.data.root_quat_w
+        w = root_quat_[0][0]
+        x = root_quat_[0][1]
+        y = root_quat_[0][2]
+        z = root_quat_[0][3]
+        siny_cosp = 2 * (w * z + x * y)
+        cosy_cosp = 1 - 2 * (y * y + z * z)
+        yaw = math.atan2(siny_cosp, cosy_cosp)
+        current_state = np.array([root_pos_[0][0].item(), root_pos_[0][1].item(), 0.3, yaw, 0.0, 0.0, 0.0, -0.569, 0.0, -2.810, 0.0, 3.037, 0.741, 0.0, 0.0])  
+        control, predicted_state = compute_mpc_control(mpc, current_state)
+        print(root_pos_[0][0].item(), root_pos_[0][1].item(), yaw)
+        #control = control.astype(np.float32)
+        #print(yaw)
+        self._commands[0][0] = control[0]
+        self._commands[0][1] = control[1]
+        self._commands[0][2] = control[3]
+        
+        # Put to zero the reference if too small
+        #mask = (self._commands > -0.1) & (self._commands < 0.1)
+        #self._commands[mask] = 0.0
+        
         self._previous_actions = self._actions.clone()
         height_data = None
         if isinstance(self.cfg, AnymalCRoughEnvCfg):
-            height_data = (
-                self._height_scanner.data.pos_w[:, 2].unsqueeze(1) - self._height_scanner.data.ray_hits_w[..., 2] - 0.5
-            ).clip(-1.0, 1.0)
+            height_data = (self._height_scanner.data.pos_w[:, 2].unsqueeze(1) - self._height_scanner.data.ray_hits_w[..., 2] - 0.5).clip(-1.0, 1.0)
         obs = torch.cat(
             [
                 tensor
@@ -299,10 +358,11 @@ class AnymalCEnv(DirectRLEnv):
         self._previous_actions[env_ids] = 0.0
         
         # Sample new commands
-        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
-        #self._commands[env_ids] = torch.tensor([1.0, 0.0, 0.0], device=self._commands.device)
-
-        
+        #self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
+        #numero = random.randint(1, 20)
+        #if numero == 10:
+        #    self._commands[env_ids] *= 0
+      
         # Reset robot state
         joint_pos = self._robot.data.default_joint_pos[env_ids]
         joint_vel = self._robot.data.default_joint_vel[env_ids]
@@ -323,3 +383,14 @@ class AnymalCEnv(DirectRLEnv):
         extras["Episode_Termination/base_contact"] = torch.count_nonzero(self.reset_terminated[env_ids]).item()
         extras["Episode_Termination/time_out"] = torch.count_nonzero(self.reset_time_outs[env_ids]).item()
         self.extras["log"].update(extras)
+
+
+        # reset mpc
+        desiredTimeTraj = scalar_array()
+        desiredTimeTraj.push_back(0.0)
+        desiredInputTraj = vector_array()
+        desiredInputTraj.push_back(np.zeros(inputDim))
+        desiredStateTraj = vector_array()
+        desiredStateTraj.push_back(np.array([5.0, 0.0, 0.3, 0.0, 0.0, 1.0, 0.0]))
+        targetTrajectories = TargetTrajectories(desiredTimeTraj, desiredStateTraj, desiredInputTraj)
+        mpc.reset(targetTrajectories)
