@@ -18,42 +18,9 @@ from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.markers.config import FRAME_MARKER_CFG
 from omni.isaac.lab.utils.math import subtract_frame_transforms
 # Pre-defined configs
-from omni.isaac.lab_assets.anymal import ANYMAL_D_CFG  # isort: skip
-from omni.isaac.lab_assets.anymal import ANYMAL_KINOVA_CFG  # isort: skip
 from omni.isaac.lab_assets.anymal import ANYMAL_STICK_CFG  # isort: skip
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 
-# mpc
-import numpy as np
-import os
-import rospkg
-import matplotlib.pyplot as plt
-from ocs2_mobile_manipulator import mpc_interface
-from ocs2_mobile_manipulator import (
-    scalar_array,
-    vector_array,
-    TargetTrajectories,
-)
-from MobileManipulatorPyBindingTest import compute_mpc_control
-
-# Path of the package
-packageDir = rospkg.RosPack().get_path('ocs2_mobile_manipulator')
-taskFile = os.path.join(packageDir, 'config/stick/task.info')
-libFolder = os.path.join(packageDir, 'auto_generated')
-urdfDir = rospkg.RosPack().get_path('ocs2_robotic_assets')
-urdf_ = os.path.join(urdfDir, 'resources/mobile_manipulator/stick/urdf/stick.urdf')
-
-# Initialize MPC interface
-mpc = mpc_interface(taskFile, libFolder, urdf_)
-
-# State and input dimensions
-stateDim = 7
-inputDim = 7
-
-# Markers
-frame_marker_cfg = FRAME_MARKER_CFG.copy()
-frame_marker_cfg.markers["frame"].scale = (0.1, 0.1, 0.1)
-ee_marker = VisualizationMarkers(frame_marker_cfg.replace(prim_path="/Visuals/ee_current"))
 
 @configclass
 class EventCfg:
@@ -84,7 +51,6 @@ class EventCfg:
 class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     # env
     episode_length_s = 20.0
-    #episode_length_s = 100.0
     decimation = 4
     action_scale = 0.5
     action_space = 12
@@ -198,14 +164,10 @@ class AnymalCEnv(DirectRLEnv):
 
         # Reward machines parameters
         self._P = torch.zeros(self.num_envs, 6, device=self.device)
-        self._sequenza_target_1 = torch.tensor([0, 1, 1, 0, 0, 0], device=self.device)
-        self._sequenza_target_2 = torch.tensor([0, 0, 0, 1, 1, 1], device=self.device)
+        self._sequenza_target_1 = torch.tensor([0, 1, 0, 0, 1, 0], device=self.device)
+        self._sequenza_target_2 = torch.tensor([0, 0, 1, 1, 0, 1], device=self.device)
         #self._sequenza_target_3 = torch.tensor([0, 1, 1, 0, 1, 2], device=self.device)
         #self._sequenza_target_4 = torch.tensor([0, 1, 1, 1, 0, 3], device=self.device)
-
-        # Target pose
-        self.target_pos = torch.zeros(1, 3, device=self.device)
-        self.target_or = torch.zeros(1, 3, device=self.device)
         
         # Logging
         self._episode_sums = {
@@ -229,33 +191,9 @@ class AnymalCEnv(DirectRLEnv):
         self._undesired_contact_body_ids, _ = self._contact_sensor.find_bodies(".*THIGH")
         self._interaction_ids, _ = self._contact_sensor.find_bodies("interaction")
 
-        #self._forces = torch.zeros(self.num_envs, 1, 3, device=self.device)
-        #self._forces[0,0,1] = 100
-        #self._torques = torch.zeros(self.num_envs, 1, 3, device=self.device)
-
-        # Admittance filter
-        self.m = 2
-        self.k = 250
-        self.d = 50.0
-        self.dt_ = 4/200
-
-        # Matrici del sistema nello spazio degli stati
-        self.A = np.block([
-            [0.0, 1.0],
-            [-self.k/self.m, -self.d/self.m]
-        ])
-        self.B = np.vstack([0.0, 1/self.m])
-
-        # Stato iniziale [Delta_p, Delta_p_dot]
-        self.x = np.zeros((2,))
-        self.f_x = np.zeros((1,))
-
-        # Plot
-        self.count = 0
-        self.t_list = []
-        self.force_list = []
-
-        self._forces = torch.zeros(self.num_envs, 3, device=self.device)
+        self._forces = torch.zeros(self.num_envs, 1, 3, device=self.device)
+        #self._forces[0,0,1] = 50
+        self._torques = torch.zeros(self.num_envs, 1, 3, device=self.device)
 
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
@@ -275,17 +213,6 @@ class AnymalCEnv(DirectRLEnv):
         # add lights
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
-        
-        # add a cone
-        self._cuboid_cfg = sim_utils.CuboidCfg(
-            size=(0.5, 4, 1),
-            #rigid_props=sim_utils.RigidBodyPropertiesCfg(),
-            #mass_props=sim_utils.MassPropertiesCfg(mass=1.0),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
-        )
-        self._cuboid_cfg.func("/World/envs/env_.*/Cone", self._cuboid_cfg, translation=(3.20, 0.0, 0.5))
-
 
 
     def _pre_physics_step(self, actions: torch.Tensor):
@@ -296,53 +223,6 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        # interaction force
-        interaction_force = self._contact_sensor.data.net_forces_w[:, self._interaction_ids]
-        self.f_x[0] = interaction_force[0][0][0].item()
-
-        # admittance filter
-        x_dot = self.A @ self.x + self.B @ (self.f_x)
-        self.x = self.x + self.dt_*x_dot
-
-        # reset mpc
-        desiredTimeTraj = scalar_array()
-        desiredTimeTraj.push_back(0.0)
-        desiredInputTraj = vector_array()
-        desiredInputTraj.push_back(np.zeros(inputDim))
-        desiredStateTraj = vector_array()
-        #desiredStateTraj.push_back(np.array([3.0+self.x[0], 0.0, 0.6, 0.0, 0.0, 0.7, 0.7]))
-        desiredStateTraj.push_back(np.array([3.0, 0.0, 0.6, 0.0, 0.0, 0.7, 0.7]))
-        targetTrajectories = TargetTrajectories(desiredTimeTraj, desiredStateTraj, desiredInputTraj)
-        mpc.reset(targetTrajectories)
-
-        #self.target_pos = torch.tensor([[3.0+self.x[0], 0.0, 0.75]], device=self.device)
-        self.target_pos = torch.tensor([[3.0, 0.0, 0.75]], device=self.device)
-        self.target_or = torch.tensor([[0.7, 0.0, 0.0, 0.7]], device=self.device)
-        ee_marker.visualize(self.target_pos, self.target_or)
-
-
-        root_pos_ = self._robot.data.root_pos_w
-        root_quat_ = self._robot.data.root_quat_w
-        w = root_quat_[0][0].item()
-        x = root_quat_[0][1].item()
-        y = root_quat_[0][2].item()
-        z = root_quat_[0][3].item()
-        siny_cosp = 2 * (w * z + x * y)
-        cosy_cosp = 1 - 2 * (y * y + z * z)
-        yaw = math.atan2(siny_cosp, cosy_cosp)
-        current_state = np.array([root_pos_[0][0].item(), root_pos_[0][1].item(), 0.6, yaw, 0.0, 0.0, 0.0])  
-        control, predicted_state = compute_mpc_control(mpc, current_state)
-        vx_local = control[0] * np.cos(yaw) + control[1] * np.sin(yaw)
-        vy_local = -control[0] * np.sin(yaw) + control[1] * np.cos(yaw)
-        self._commands[0][0] = vx_local
-        self._commands[0][1] = vy_local
-        self._commands[0][2] = control[3]
-
-        print(self.f_x)
-        self.count += 1
-        self.t_list.append(self.count * (4/200))
-        self.force_list.append(-self.f_x)
-
         self._previous_actions = self._actions.clone()
         height_data = None
         if isinstance(self.cfg, AnymalCRoughEnvCfg):
@@ -440,8 +320,8 @@ class AnymalCEnv(DirectRLEnv):
             "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
-        mask_extra = self._extra_reward > 0
-        reward[mask_extra] += 0.075
+        #mask_extra = self._extra_reward > 0
+        #reward[mask_extra] += 0.075
 
         # Logging
         for key, value in rewards.items():
@@ -459,15 +339,15 @@ class AnymalCEnv(DirectRLEnv):
             env_ids = self._robot._ALL_INDICES
         self._robot.reset(env_ids)
         super()._reset_idx(env_ids)
-        #if len(env_ids) == self.num_envs:
-        #    # Spread out the resets to avoid spikes in training when many environments reset at a similar time
-        #    self.episode_length_buf[:] = torch.randint_like(self.episode_length_buf, high=int(self.max_episode_length))
+        if len(env_ids) == self.num_envs:
+            # Spread out the resets to avoid spikes in training when many environments reset at a similar time
+            self.episode_length_buf[:] = torch.randint_like(self.episode_length_buf, high=int(self.max_episode_length))
         self._actions[env_ids] = 0.0
         self._previous_actions[env_ids] = 0.0
         
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
-        numero = random.randint(1, 25)
+        numero = random.randint(1, 15)
         if numero == 10:
             self._commands[env_ids] *= 0
 
@@ -481,6 +361,11 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+
+        # Sample new contact force
+        #self._forces[env_ids,0,1] = torch.zeros_like(self._forces[env_ids,0,1]).uniform_(50.0, 50.0)
+        #self._robot.set_external_force_and_torque(self._forces[env_ids], self._torques[env_ids], env_ids=env_ids, body_ids=self._interaction_ids)
+
         # Logging
         extras = dict()
         for key in self._episode_sums.keys():
@@ -493,21 +378,3 @@ class AnymalCEnv(DirectRLEnv):
         extras["Episode_Termination/base_contact"] = torch.count_nonzero(self.reset_terminated[env_ids]).item()
         extras["Episode_Termination/time_out"] = torch.count_nonzero(self.reset_time_outs[env_ids]).item()
         self.extras["log"].update(extras)
-
-
-
-
-        # plot
-        if (self.count > 10):
-            plt.figure(figsize=(10, 8))
-
-            # force plot
-            plt.plot(self.t_list, self.force_list)
-            plt.title('Interaction force', fontsize=18)
-            plt.xlabel('Time [s]', fontsize=14)
-            plt.ylabel('Force [N]', fontsize=14)
-            plt.grid()
-
-            # show plots
-            plt.tight_layout()
-            plt.show()
