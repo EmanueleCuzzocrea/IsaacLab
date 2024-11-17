@@ -235,8 +235,8 @@ class AnymalCEnv(DirectRLEnv):
 
         # Admittance filter
         self.m = 2
-        self.k = 250
-        self.d = 50.0
+        self.k = 500
+        self.d = 20.0
         self.dt_ = 4/200
 
         # Matrici del sistema nello spazio degli stati
@@ -257,6 +257,8 @@ class AnymalCEnv(DirectRLEnv):
 
         self._forces = torch.zeros(self.num_envs, 3, device=self.device)
 
+        self._h = 0.0
+
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
         self.scene.articulations["robot"] = self._robot
@@ -276,7 +278,7 @@ class AnymalCEnv(DirectRLEnv):
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
         
-        # add a cone
+        # add a cuboid
         self._cuboid_cfg = sim_utils.CuboidCfg(
             size=(0.5, 4, 1),
             #rigid_props=sim_utils.RigidBodyPropertiesCfg(),
@@ -284,7 +286,7 @@ class AnymalCEnv(DirectRLEnv):
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
         )
-        self._cuboid_cfg.func("/World/envs/env_.*/Cone", self._cuboid_cfg, translation=(3.20, 0.0, 0.5))
+        self._cuboid_cfg.func("/World/envs/env_.*/Cone", self._cuboid_cfg, translation=(3.15, 0.0, 0.5))
 
 
 
@@ -293,7 +295,7 @@ class AnymalCEnv(DirectRLEnv):
         self._processed_actions = self.cfg.action_scale * self._actions + self._robot.data.default_joint_pos
 
     def _apply_action(self):
-        self._robot.set_joint_position_target(self._processed_actions)        
+        self._robot.set_joint_position_target(self._processed_actions)
 
     def _get_observations(self) -> dict:
         # interaction force
@@ -304,6 +306,8 @@ class AnymalCEnv(DirectRLEnv):
         x_dot = self.A @ self.x + self.B @ (self.f_x)
         self.x = self.x + self.dt_*x_dot
 
+        self._h += 0.001
+
         # reset mpc
         desiredTimeTraj = scalar_array()
         desiredTimeTraj.push_back(0.0)
@@ -311,12 +315,12 @@ class AnymalCEnv(DirectRLEnv):
         desiredInputTraj.push_back(np.zeros(inputDim))
         desiredStateTraj = vector_array()
         #desiredStateTraj.push_back(np.array([3.0+self.x[0], 0.0, 0.6, 0.0, 0.0, 0.7, 0.7]))
-        desiredStateTraj.push_back(np.array([3.0, 0.0, 0.6, 0.0, 0.0, 0.7, 0.7]))
+        desiredStateTraj.push_back(np.array([3.0, self._h, 0.6, 0.0, 0.0, 0.7, 0.7]))
         targetTrajectories = TargetTrajectories(desiredTimeTraj, desiredStateTraj, desiredInputTraj)
         mpc.reset(targetTrajectories)
 
         #self.target_pos = torch.tensor([[3.0+self.x[0], 0.0, 0.75]], device=self.device)
-        self.target_pos = torch.tensor([[3.0, 0.0, 0.75]], device=self.device)
+        self.target_pos = torch.tensor([[3.0, self._h, 0.75]], device=self.device)
         self.target_or = torch.tensor([[0.7, 0.0, 0.0, 0.7]], device=self.device)
         ee_marker.visualize(self.target_pos, self.target_or)
 
@@ -327,16 +331,31 @@ class AnymalCEnv(DirectRLEnv):
         x = root_quat_[0][1].item()
         y = root_quat_[0][2].item()
         z = root_quat_[0][3].item()
-        siny_cosp = 2 * (w * z + x * y)
-        cosy_cosp = 1 - 2 * (y * y + z * z)
-        yaw = math.atan2(siny_cosp, cosy_cosp)
-        current_state = np.array([root_pos_[0][0].item(), root_pos_[0][1].item(), 0.6, yaw, 0.0, 0.0, 0.0])  
+        
+        # yaw (z-axis rotation)
+        yaw1 = 2 * (w * z + x * y)
+        yaw2 = 1 - 2 * (y * y + z * z)
+        yaw = math.atan2(yaw1, yaw2)
+
+        # pitch (y-axis rotation)
+        pitch1 = math.sqrt(1 + 2 * (w * y - x * z))
+        pitch2 = math.sqrt(1 - 2 * (w * y - x * z))
+        pitch = 2 * math.atan2(pitch1, pitch2) - 3.14 / 2
+
+        # roll (x-axis rotation)
+        roll1 = 2 * (w * x + y * z)
+        roll2 = 1 - 2 * (x * x + y * y)
+        roll = math.atan2(roll1, roll2)
+    
+        current_state = np.array([root_pos_[0][0].item(), root_pos_[0][1].item(), root_pos_[0][2].item(), yaw, pitch, roll, 0.0])  
         control, predicted_state = compute_mpc_control(mpc, current_state)
         vx_local = control[0] * np.cos(yaw) + control[1] * np.sin(yaw)
         vy_local = -control[0] * np.sin(yaw) + control[1] * np.cos(yaw)
         self._commands[0][0] = vx_local
         self._commands[0][1] = vy_local
         self._commands[0][2] = control[3]
+
+        #print(vx_local, vy_local, control[3])
 
         print(self.f_x)
         self.count += 1

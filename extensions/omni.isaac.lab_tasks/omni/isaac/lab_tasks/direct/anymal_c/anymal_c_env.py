@@ -229,6 +229,9 @@ class AnymalCEnv(DirectRLEnv):
         self._base_id, _ = self._contact_sensor.find_bodies("base")
         self._feet_ids, _ = self._contact_sensor.find_bodies(".*FOOT")
         self._undesired_contact_body_ids, _ = self._contact_sensor.find_bodies(".*THIGH")
+        self._interaction_ids, _ = self._contact_sensor.find_bodies("j2n6s300_end_effector")
+
+        self.f_x = np.zeros((1,))
 
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
@@ -249,6 +252,16 @@ class AnymalCEnv(DirectRLEnv):
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
 
+        # add a cuboid
+        self._cuboid_cfg = sim_utils.CuboidCfg(
+            size=(0.5, 4, 2),
+            #rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            #mass_props=sim_utils.MassPropertiesCfg(mass=1.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
+        )
+        self._cuboid_cfg.func("/World/envs/env_.*/Cone", self._cuboid_cfg, translation=(3.4, 0.0, 0.5))
+
     def _pre_physics_step(self, actions: torch.Tensor):
         self._actions = actions.clone()
         self._processed_actions = self.cfg.action_scale * self._actions + self._robot.data.default_joint_pos[:,self._anymal_ids]
@@ -257,6 +270,11 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions, joint_ids=self._anymal_ids)
 
     def _get_observations(self) -> dict:
+        # interaction force
+        interaction_force = self._contact_sensor.data.net_forces_w[:, self._interaction_ids]
+        self.f_x[0] = interaction_force[0][0][0].item()
+        print(self.f_x)
+
         root_pos_ = self._robot.data.root_pos_w
         root_quat_ = self._robot.data.root_quat_w
         w = root_quat_[0][0].item()

@@ -46,6 +46,33 @@ class EventCfg:
         },
     )
 
+    # reset
+    base_external_force_torque = EventTerm(
+        func=mdp.apply_external_force_torque,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "force_range": (-25.0, 25.0),
+            "torque_range": (-25.0, 25.0),
+        },
+    )
+
+    reset_base = EventTerm(
+        func=mdp.reset_root_state_uniform,
+        mode="reset",
+        params={
+            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+            "velocity_range": {
+                "x": (-0.5, 0.5),
+                "y": (-0.5, 0.5),
+                "z": (-0.5, 0.5),
+                "roll": (-0.5, 0.5),
+                "pitch": (-0.5, 0.5),
+                "yaw": (-0.5, 0.5),
+            },
+        },
+    )
+
 
 @configclass
 class AnymalCFlatEnvCfg(DirectRLEnvCfg):
@@ -166,7 +193,7 @@ class AnymalCEnv(DirectRLEnv):
         self._P = torch.zeros(self.num_envs, 6, device=self.device)
         self._sequenza_target_1 = torch.tensor([0, 1, 0, 0, 1, 0], device=self.device)
         self._sequenza_target_2 = torch.tensor([0, 0, 1, 1, 0, 1], device=self.device)
-        #self._sequenza_target_3 = torch.tensor([0, 1, 1, 0, 1, 2], device=self.device)
+        #self._sequenza_target_3 = torch.tensor([0, 1, 0, 1, 1, 2], device=self.device)
         #self._sequenza_target_4 = torch.tensor([0, 1, 1, 1, 0, 3], device=self.device)
         
         # Logging
@@ -279,19 +306,19 @@ class AnymalCEnv(DirectRLEnv):
         maschera1 = (self._P == self._sequenza_target_1).all(dim=1)
         self._P[:, 5][maschera1] = 1
         self._extra_reward[maschera1] = 2
-        self._P[:, 0][maschera1] = 10
+        self._P[:, 0][maschera1] = 12
         maschera2 = (self._P == self._sequenza_target_2).all(dim=1)
         self._P[:, 5][maschera2] = 0
         self._extra_reward[maschera2] = 2
-        self._P[:, 0][maschera2] = 10
+        self._P[:, 0][maschera2] = 12
         #maschera3 = (self._P == self._sequenza_target_3).all(dim=1)
         #self._P[:, 5][maschera3] = 3
         #self._extra_reward[maschera3] = 2
-        #self._P[:, 0][maschera3] = 5
+        #self._P[:, 0][maschera3] = 12
         #maschera4 = (self._P == self._sequenza_target_4).all(dim=1)
         #self._P[:, 5][maschera4] = 0
         #self._extra_reward[maschera4] = 2
-        #self._P[:, 0][maschera4] = 5
+        #self._P[:, 0][maschera4] = 12
         self._extra_reward = self._extra_reward.squeeze()
 
         last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
@@ -320,8 +347,8 @@ class AnymalCEnv(DirectRLEnv):
             "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
-        #mask_extra = self._extra_reward > 0
-        #reward[mask_extra] += 0.075
+        mask_extra = self._extra_reward > 0
+        reward[mask_extra] += 0.075
 
         # Logging
         for key, value in rewards.items():
@@ -346,7 +373,7 @@ class AnymalCEnv(DirectRLEnv):
         self._previous_actions[env_ids] = 0.0
         
         # Sample new commands
-        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
+        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.5, 0.5)
         numero = random.randint(1, 15)
         if numero == 10:
             self._commands[env_ids] *= 0

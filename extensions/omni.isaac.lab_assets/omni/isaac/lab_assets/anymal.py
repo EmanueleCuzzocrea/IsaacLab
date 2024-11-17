@@ -162,7 +162,7 @@ Note:
 
 ANYMAL_KINOVA_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"/home/emanuele/isaac/IsaacLab/source/extensions/omni.isaac.lab_assets/data/Robots/Loco-manipulation/anymal_kinova.usd",
+        usd_path=f"/home/emanuele/isaac/IsaacLab/source/extensions/omni.isaac.lab_assets/data/Robots/Loco-manipulation-kinova2/anymal_kinova.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -218,7 +218,7 @@ ANYMAL_KINOVA_CFG = ArticulationCfg(
 
 ANYMAL_STICK_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"/home/emanuele/isaac/IsaacLab/source/extensions/omni.isaac.lab_assets/data/Robots/Loco-manipulation-stick2/anymal_stick.usd",
+        usd_path=f"/home/emanuele/isaac/IsaacLab/source/extensions/omni.isaac.lab_assets/data/Robots/Loco-manipulation-stick3/anymal_stick.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
