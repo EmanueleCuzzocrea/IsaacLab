@@ -46,32 +46,31 @@ class EventCfg:
         },
     )
 
-    # reset
-    base_external_force_torque = EventTerm(
-        func=mdp.apply_external_force_torque,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (-25.0, 25.0),
-            "torque_range": (-25.0, 25.0),
-        },
-    )
-
-    reset_base = EventTerm(
-        func=mdp.reset_root_state_uniform,
-        mode="reset",
-        params={
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-            "velocity_range": {
-                "x": (-0.5, 0.5),
-                "y": (-0.5, 0.5),
-                "z": (-0.5, 0.5),
-                "roll": (-0.5, 0.5),
-                "pitch": (-0.5, 0.5),
-                "yaw": (-0.5, 0.5),
-            },
-        },
-    )
+    ## reset
+    #base_external_force_torque = EventTerm(
+    #    func=mdp.apply_external_force_torque,
+    #    mode="reset",
+    #    params={
+    #        "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #        "force_range": (-10.0, 10.0),
+    #        "torque_range": (-10.0, 10.0),
+    #    },
+    #)
+    #reset_base = EventTerm(
+    #    func=mdp.reset_root_state_uniform,
+    #    mode="reset",
+    #    params={
+    #        "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+    #        "velocity_range": {
+    #            "x": (-0.5, 0.5),
+    #            "y": (-0.5, 0.5),
+    #            "z": (-0.5, 0.5),
+    #            "roll": (-0.5, 0.5),
+    #            "pitch": (-0.5, 0.5),
+    #            "yaw": (-0.5, 0.5),
+    #        },
+    #    },
+    #)
 
 
 @configclass
@@ -136,6 +135,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     feet_air_time_reward_scale = 0.5
     undersired_contact_reward_scale = -1.0
     flat_orientation_reward_scale = -5.0
+    tangential_force_y = 2
 
 
 @configclass
@@ -193,7 +193,7 @@ class AnymalCEnv(DirectRLEnv):
         self._P = torch.zeros(self.num_envs, 6, device=self.device)
         self._sequenza_target_1 = torch.tensor([0, 1, 0, 0, 1, 0], device=self.device)
         self._sequenza_target_2 = torch.tensor([0, 0, 1, 1, 0, 1], device=self.device)
-        #self._sequenza_target_3 = torch.tensor([0, 1, 0, 1, 1, 2], device=self.device)
+        #self._sequenza_target_3 = torch.tensor([0, 1, 1, 0, 1, 2], device=self.device)
         #self._sequenza_target_4 = torch.tensor([0, 1, 1, 1, 0, 3], device=self.device)
         
         # Logging
@@ -210,6 +210,7 @@ class AnymalCEnv(DirectRLEnv):
                 "feet_air_time",
                 "undesired_contacts",
                 "flat_orientation_l2",
+                "tangential_force_y",
             ]
         }
         # Get specific body indices
@@ -219,7 +220,7 @@ class AnymalCEnv(DirectRLEnv):
         self._interaction_ids, _ = self._contact_sensor.find_bodies("interaction")
 
         self._forces = torch.zeros(self.num_envs, 1, 3, device=self.device)
-        #self._forces[0,0,1] = 50
+        #self._forces[0,0,1] = 100
         self._torques = torch.zeros(self.num_envs, 1, 3, device=self.device)
 
     def _setup_scene(self):
@@ -250,6 +251,12 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
+        #a = self._robot.data.root_pos_w
+        #a -= self._terrain.env_origins
+        #print(a)
+
+        
+
         self._previous_actions = self._actions.clone()
         height_data = None
         if isinstance(self.cfg, AnymalCRoughEnvCfg):
@@ -306,19 +313,19 @@ class AnymalCEnv(DirectRLEnv):
         maschera1 = (self._P == self._sequenza_target_1).all(dim=1)
         self._P[:, 5][maschera1] = 1
         self._extra_reward[maschera1] = 2
-        self._P[:, 0][maschera1] = 12
+        self._P[:, 0][maschera1] = 10
         maschera2 = (self._P == self._sequenza_target_2).all(dim=1)
         self._P[:, 5][maschera2] = 0
         self._extra_reward[maschera2] = 2
-        self._P[:, 0][maschera2] = 12
+        self._P[:, 0][maschera2] = 10
         #maschera3 = (self._P == self._sequenza_target_3).all(dim=1)
         #self._P[:, 5][maschera3] = 3
         #self._extra_reward[maschera3] = 2
-        #self._P[:, 0][maschera3] = 12
+        #self._P[:, 0][maschera3] = 10
         #maschera4 = (self._P == self._sequenza_target_4).all(dim=1)
         #self._P[:, 5][maschera4] = 0
         #self._extra_reward[maschera4] = 2
-        #self._P[:, 0][maschera4] = 12
+        #self._P[:, 0][maschera4] = 10
         self._extra_reward = self._extra_reward.squeeze()
 
         last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
@@ -334,6 +341,29 @@ class AnymalCEnv(DirectRLEnv):
         # flat orientation
         flat_orientation = torch.sum(torch.square(self._robot.data.projected_gravity_b[:, :2]), dim=1)
 
+        # tangential force y
+        feet_force = self._contact_sensor.data.net_forces_w[:, self._feet_ids]
+        feet_force_x = feet_force[:, :, 0]
+        feet_force_y = feet_force[:, :, 1]
+        sum_tangential_force_x = torch.sum(feet_force_x, dim=1)
+        sum_tangential_force_y = torch.sum(feet_force_y, dim=1)
+
+        root_quat_ = self._robot.data.root_quat_w
+        w = root_quat_[:, 0]
+        x = root_quat_[:, 1]
+        y = root_quat_[:, 2]
+        z = root_quat_[:, 3]
+        yaw1 = 2 * (w * z + x * y)
+        yaw2 = 1 - 2 * (y * y + z * z)
+        yaw = torch.atan2(yaw1, yaw2)
+
+        sin_yaw = torch.sin(yaw)
+        cos_yaw = torch.cos(yaw)
+
+        F_y_robot = -sum_tangential_force_x * sin_yaw + sum_tangential_force_y * cos_yaw
+        F_y_robot = torch.abs(F_y_robot)
+        F_y_robot = torch.clamp(F_y_robot, min=0, max=2)
+
         rewards = {
             "track_lin_vel_xy_exp": lin_vel_error_mapped * self.cfg.lin_vel_reward_scale * self.step_dt,
             "track_ang_vel_z_exp": yaw_rate_error_mapped * self.cfg.yaw_rate_reward_scale * self.step_dt,
@@ -345,10 +375,11 @@ class AnymalCEnv(DirectRLEnv):
             "feet_air_time": air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
             "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
             "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
+            "tangential_force_y": F_y_robot * self.cfg.tangential_force_y * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
-        mask_extra = self._extra_reward > 0
-        reward[mask_extra] += 0.075
+        #mask_extra = self._extra_reward > 0
+        #reward[mask_extra] += 0.1
 
         # Logging
         for key, value in rewards.items():
@@ -373,10 +404,11 @@ class AnymalCEnv(DirectRLEnv):
         self._previous_actions[env_ids] = 0.0
         
         # Sample new commands
-        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.5, 0.5)
+        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1, 1)
         numero = random.randint(1, 15)
-        if numero == 10:
-            self._commands[env_ids] *= 0
+        #if numero == 10:
+        self._commands[env_ids] *= 0
+        self._commands[env_ids,0] = 0.5
 
         #self._P[env_ids] *= 0
       
@@ -389,9 +421,10 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
 
-        # Sample new contact force
-        #self._forces[env_ids,0,1] = torch.zeros_like(self._forces[env_ids,0,1]).uniform_(50.0, 50.0)
-        #self._robot.set_external_force_and_torque(self._forces[env_ids], self._torques[env_ids], env_ids=env_ids, body_ids=self._interaction_ids)
+        ## Sample new contact force
+        #self._forces[env_ids,0,2] = torch.zeros_like(self._forces[env_ids,0,2]).uniform_(-15.0, 15.0)
+        #self._robot.set_external_force_and_torque(self._forces[env_ids], self._torques[env_ids], env_ids=env_ids, body_ids=self._base_id)
+        print(env_ids)
 
         # Logging
         extras = dict()
