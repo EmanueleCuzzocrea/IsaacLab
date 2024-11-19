@@ -135,7 +135,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     feet_air_time_reward_scale = 0.5
     undersired_contact_reward_scale = -1.0
     flat_orientation_reward_scale = -5.0
-    tangential_force_y = 1.0
+    tangential_force_y = 0.01
 
 
 @configclass
@@ -267,7 +267,7 @@ class AnymalCEnv(DirectRLEnv):
                     height_data,
                     self._actions,
                     #self._forces_commands,
-                    #self._forces,
+                    self._forces,
                 )
                 if tensor is not None
             ],
@@ -307,11 +307,11 @@ class AnymalCEnv(DirectRLEnv):
         maschera1 = (self._P == self._sequenza_target_1).all(dim=1)
         self._P[:, 5][maschera1] = 1
         self._extra_reward[maschera1] = 2
-        self._P[:, 0][maschera1] = 10
+        self._P[:, 0][maschera1] = 6
         maschera2 = (self._P == self._sequenza_target_2).all(dim=1)
         self._P[:, 5][maschera2] = 0
         self._extra_reward[maschera2] = 2
-        self._P[:, 0][maschera2] = 10
+        self._P[:, 0][maschera2] = 6
         self._extra_reward = self._extra_reward.squeeze()
 
         last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
@@ -335,23 +335,25 @@ class AnymalCEnv(DirectRLEnv):
 
         pos = self._robot.data.root_pos_w
         pos -= self._terrain.env_origins
-        pos = -torch.abs(pos)
+        #pos = -torch.abs(pos)
         
-        forces_ = -700*pos
+        forces_ = -100*pos
         forces_[:,0] *= 0
         forces_[:,2] *= 0
-        #forces_[mask_not_force] *= 0
+        forces_[mask_not_force] *= 0
         
         self._forces = forces_
         a = self._forces.clone()
         a = a.unsqueeze(1)
-        print(mask_force)
-        print(mask_not_force)
-        t = torch.tensor([0,1,2], device=self.device)
-        self._robot.set_external_force_and_torque(a, self._torques, env_ids=t, body_ids=self._base_id)
         
-        force_error = torch.sum(torch.square(self._forces_commands - self._forces), dim=1)
-        force_error_mapped = torch.exp(-force_error / 0.25)
+        #indices = torch.nonzero(mask_force).squeeze()
+        #self._robot.set_external_force_and_torque(a, self._torques, body_ids=self._base_id)
+
+        #force_error = torch.sum(torch.square(self._forces_commands - self._forces), dim=1)
+        #force_error_mapped = torch.exp(-force_error / 0.25)
+
+        force_error_mapped = torch.sum(torch.abs(self._forces), dim=1)
+        #force_error_mapped = torch.clamp(force_error_mapped, min=-25, max=25)
         
 
         rewards = {
@@ -397,13 +399,13 @@ class AnymalCEnv(DirectRLEnv):
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1, 1)
         self._forces_commands[env_ids] *= 0
         
-        numero = random.randint(1, 10)
-        #if numero == 4:
-        self._commands[env_ids] *= 0
-        self._commands[env_ids,1] = -0.5
-        self._forces_commands[env_ids,0] = 0.0
-        self._forces_commands[env_ids,1] = 100.0
-        self._forces_commands[env_ids,2] = 0.0
+        #numero = random.randint(1, 6)
+        numero = 2
+        if numero == 2:
+            self._commands[env_ids,2] = 0
+            self._forces_commands[env_ids,0] = 0.0
+            self._forces_commands[env_ids,1] = 1.0
+            self._forces_commands[env_ids,2] = 0.0
       
         # Reset robot state
         joint_pos = self._robot.data.default_joint_pos[env_ids]

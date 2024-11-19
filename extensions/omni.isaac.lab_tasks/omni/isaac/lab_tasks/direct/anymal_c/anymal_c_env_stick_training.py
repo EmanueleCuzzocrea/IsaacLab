@@ -210,7 +210,6 @@ class AnymalCEnv(DirectRLEnv):
                 "feet_air_time",
                 "undesired_contacts",
                 "flat_orientation_l2",
-                "tangential_force_y",
             ]
         }
         # Get specific body indices
@@ -220,7 +219,7 @@ class AnymalCEnv(DirectRLEnv):
         self._interaction_ids, _ = self._contact_sensor.find_bodies("interaction")
 
         self._forces = torch.zeros(self.num_envs, 1, 3, device=self.device)
-        #self._forces[0,0,1] = 100
+        self._forces[:,0,1] = 25
         self._torques = torch.zeros(self.num_envs, 1, 3, device=self.device)
 
     def _setup_scene(self):
@@ -251,11 +250,7 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        #a = self._robot.data.root_pos_w
-        #a -= self._terrain.env_origins
-        #print(a)
-
-        
+        self._robot.set_external_force_and_torque(self._forces, self._torques, body_ids=self._base_id)
 
         self._previous_actions = self._actions.clone()
         height_data = None
@@ -313,11 +308,11 @@ class AnymalCEnv(DirectRLEnv):
         maschera1 = (self._P == self._sequenza_target_1).all(dim=1)
         self._P[:, 5][maschera1] = 1
         self._extra_reward[maschera1] = 2
-        self._P[:, 0][maschera1] = 10
+        self._P[:, 0][maschera1] = 6
         maschera2 = (self._P == self._sequenza_target_2).all(dim=1)
         self._P[:, 5][maschera2] = 0
         self._extra_reward[maschera2] = 2
-        self._P[:, 0][maschera2] = 10
+        self._P[:, 0][maschera2] = 6
         #maschera3 = (self._P == self._sequenza_target_3).all(dim=1)
         #self._P[:, 5][maschera3] = 3
         #self._extra_reward[maschera3] = 2
@@ -375,11 +370,10 @@ class AnymalCEnv(DirectRLEnv):
             "feet_air_time": air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
             "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
             "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
-            "tangential_force_y": F_y_robot * self.cfg.tangential_force_y * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
-        #mask_extra = self._extra_reward > 0
-        #reward[mask_extra] += 0.1
+        mask_extra = self._extra_reward > 0
+        reward[mask_extra] += 0.1
 
         # Logging
         for key, value in rewards.items():
@@ -406,9 +400,9 @@ class AnymalCEnv(DirectRLEnv):
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1, 1)
         numero = random.randint(1, 15)
-        #if numero == 10:
-        self._commands[env_ids] *= 0
-        self._commands[env_ids,0] = 0.5
+        if numero == 10:
+            self._commands[env_ids] *= 0
+
 
         #self._P[env_ids] *= 0
       
@@ -422,9 +416,7 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
 
         ## Sample new contact force
-        #self._forces[env_ids,0,2] = torch.zeros_like(self._forces[env_ids,0,2]).uniform_(-15.0, 15.0)
         #self._robot.set_external_force_and_torque(self._forces[env_ids], self._torques[env_ids], env_ids=env_ids, body_ids=self._base_id)
-        print(env_ids)
 
         # Logging
         extras = dict()

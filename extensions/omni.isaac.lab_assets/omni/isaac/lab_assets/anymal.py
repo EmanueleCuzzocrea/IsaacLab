@@ -218,7 +218,7 @@ ANYMAL_KINOVA_CFG = ArticulationCfg(
 
 ANYMAL_STICK_CFG = ArticulationCfg(
     spawn=sim_utils.UsdFileCfg(
-        usd_path=f"/home/emanuele/isaac/IsaacLab/source/extensions/omni.isaac.lab_assets/data/Robots/Loco-manipulation-stick3/anymal_stick.usd",
+        usd_path=f"/home/emanuele/isaac/IsaacLab/source/extensions/omni.isaac.lab_assets/data/Robots/Loco-manipulation-stick4/anymal_stick.usd",
         activate_contact_sensors=True,
         rigid_props=sim_utils.RigidBodyPropertiesCfg(
             disable_gravity=False,
@@ -234,7 +234,8 @@ ANYMAL_STICK_CFG = ArticulationCfg(
         ),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.0, 0.6),
+        pos=(2.0, 0.0, 0.6),
+        #rot=(0.7, 0.0, 0.0, 0.7),
         joint_pos={
             ".*HAA": 0.0,       # all HAA
             ".*F_HFE": 0.4,     # both front HFE

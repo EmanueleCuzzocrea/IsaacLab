@@ -5,9 +5,10 @@ Anymal locomotion environment.
 import gymnasium as gym
 from . import agents
 #from .anymal_c_env import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
-#from .anymal_c_env_stick import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+from .anymal_c_env_stick import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
 #from .anymal_c_env_stick_training import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
-from .anymal_c_env_stick_training2 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training2 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training3 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
 
 # Register Gym environments.
 
