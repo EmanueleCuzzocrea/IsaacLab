@@ -25,21 +25,21 @@ LOW_LEVEL_ENV_CFG = AnymalCFlatEnvCfg()
 class EventCfg:
     """Configuration for events."""
 
-    reset_base = EventTerm(
-        func=mdp.reset_root_state_uniform,
-        mode="reset",
-        params={
-            "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-            "velocity_range": {
-                "x": (-0.0, 0.0),
-                "y": (-0.0, 0.0),
-                "z": (-0.0, 0.0),
-                "roll": (-0.0, 0.0),
-                "pitch": (-0.0, 0.0),
-                "yaw": (-0.0, 0.0),
-            },
-        },
-    )
+    #reset_base = EventTerm(
+    #    func=mdp.reset_root_state_uniform,
+    #    mode="reset",
+    #    params={
+    #        "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
+    #        "velocity_range": {
+    #            "x": (-0.0, 0.0),
+    #            "y": (-0.0, 0.0),
+    #            "z": (-0.0, 0.0),
+    #            "roll": (-0.0, 0.0),
+    #            "pitch": (-0.0, 0.0),
+    #            "yaw": (-0.0, 0.0),
+    #        },
+    #    },
+    #)
 
 
 @configclass
@@ -103,7 +103,7 @@ class CommandsCfg:
         simple_heading=False,
         resampling_time_range=(8.0, 8.0),
         debug_vis=True,
-        ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(-3.0, 3.0), pos_y=(-3.0, 3.0), heading=(-math.pi, math.pi)),
+        ranges=mdp.UniformPose2dCommandCfg.Ranges(pos_x=(0.6, 0.6), pos_y=(0.0, 0.0), heading=(3.14, 3.14)),
     )
 
 

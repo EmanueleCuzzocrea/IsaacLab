@@ -82,6 +82,22 @@ class MySceneCfg(InteractiveSceneCfg):
     )
 
 
+    cuboid_cfg = AssetBaseCfg(
+        prim_path="/World/Cube",
+        spawn=sim_utils.CuboidCfg(
+            size=(0.5, 4, 2),
+            #rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            #physics_material=sim_utils.RigidBodyMaterialCfg(
+            #    static_friction=0.0,
+            #    dynamic_friction=0.0,
+            #    compliant_contact_stiffness=250000000),
+            #mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
+        ),
+    )
+
+
 ##
 # MDP settings
 ##

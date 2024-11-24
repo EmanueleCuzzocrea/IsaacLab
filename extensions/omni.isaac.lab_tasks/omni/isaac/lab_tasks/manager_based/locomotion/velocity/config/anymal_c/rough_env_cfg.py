@@ -11,7 +11,7 @@ from omni.isaac.lab_tasks.manager_based.locomotion.velocity.velocity_env_cfg imp
 # Pre-defined configs
 ##
 from omni.isaac.lab_assets.anymal import ANYMAL_C_CFG  # isort: skip
-
+from omni.isaac.lab_assets.anymal import ANYMAL_STICK_CFG  # isort: skip
 
 @configclass
 class AnymalCRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
@@ -19,7 +19,7 @@ class AnymalCRoughEnvCfg(LocomotionVelocityRoughEnvCfg):
         # post init of parent
         super().__post_init__()
         # switch robot to anymal-c
-        self.scene.robot = ANYMAL_C_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
+        self.scene.robot = ANYMAL_STICK_CFG.replace(prim_path="{ENV_REGEX_NS}/Robot")
 
 
 @configclass

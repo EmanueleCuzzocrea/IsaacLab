@@ -5,10 +5,20 @@ Anymal locomotion environment.
 import gymnasium as gym
 from . import agents
 #from .anymal_c_env import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
-from .anymal_c_env_stick import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
 #from .anymal_c_env_stick_training import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
 #from .anymal_c_env_stick_training2 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
 #from .anymal_c_env_stick_training3 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training4 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training5 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training6 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training7 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training8 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training9 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training10 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training11 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+#from .anymal_c_env_stick_training12 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+from .anymal_c_env_stick_training11_2 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
 
 # Register Gym environments.
 

@@ -198,10 +198,12 @@ class AnymalCEnv(DirectRLEnv):
 
         # Reward machines parameters
         self._P = torch.zeros(self.num_envs, 6, device=self.device)
-        self._sequenza_target_1 = torch.tensor([0, 1, 1, 0, 0, 0], device=self.device)
-        self._sequenza_target_2 = torch.tensor([0, 0, 0, 1, 1, 1], device=self.device)
-        #self._sequenza_target_3 = torch.tensor([0, 1, 1, 0, 1, 2], device=self.device)
-        #self._sequenza_target_4 = torch.tensor([0, 1, 1, 1, 0, 3], device=self.device)
+        self._sequenza_target_1 = torch.tensor([0, 1, 0, 0, 1, 0], device=self.device)
+        self._sequenza_target_2 = torch.tensor([0, 1, 1, 1, 1, 1], device=self.device)
+        self._sequenza_target_3 = torch.tensor([0, 0, 1, 1, 0, 2], device=self.device)
+        self._sequenza_target_4 = torch.tensor([0, 1, 1, 1, 1, 3], device=self.device)
+
+        self._sequenza_target_0 = torch.tensor([1, 1, 1, 1], device=self.device)
 
         # Target pose
         self.target_pos = torch.zeros(1, 3, device=self.device)
@@ -234,6 +236,8 @@ class AnymalCEnv(DirectRLEnv):
         self._torques = torch.zeros(self.num_envs, 1, 3, device=self.device)
 
         self._forces_commands = torch.zeros(self.num_envs, 3, device=self.device)
+
+        self.a = 0.0
 
         # Admittance filter
         self.m = 2
@@ -315,6 +319,10 @@ class AnymalCEnv(DirectRLEnv):
             self._h += 0.002
             #self._forces_commands[0,1] = 1.0
 
+        #self.a += 0.0005*(25 + self.f_x[0])
+        self.a += 0.0001*(25 + self.f_x[0])
+        b = 0.0005*(25 + self.f_x[0])
+
         # reset mpc
         desiredTimeTraj = scalar_array()
         desiredTimeTraj.push_back(0.0)
@@ -322,14 +330,14 @@ class AnymalCEnv(DirectRLEnv):
         desiredInputTraj.push_back(np.zeros(inputDim))
         desiredStateTraj = vector_array()
         #desiredStateTraj.push_back(np.array([3.0+self.x[0], self._h, 0.6, 0.0, 0.0, 0.7, 0.7]))
-        desiredStateTraj.push_back(np.array([3.0, self._h, 0.6, 0.0, 0.0, 0.0, 1.0]))
+        desiredStateTraj.push_back(np.array([3.0+self.a, self._h*0, 0.6, 0.0, 0.0, 0.0, 1.0]))
         targetTrajectories = TargetTrajectories(desiredTimeTraj, desiredStateTraj, desiredInputTraj)
         mpc.reset(targetTrajectories)
 
         #self.target_pos = torch.tensor([[3.0+self.x[0], self._h, 0.75]], device=self.device)
-        self.target_pos = torch.tensor([[3.0, self._h, 0.75]], device=self.device)
-        self.target_or = torch.tensor([[0.7, 0.0, 0.0, 0.7]], device=self.device)
-        ee_marker.visualize(self.target_pos, self.target_or)
+        #self.target_pos = torch.tensor([[3.0+self.a, self._h*0, 0.75]], device=self.device)
+        #self.target_or = torch.tensor([[0.7, 0.0, 0.0, 0.7]], device=self.device)
+        #ee_marker.visualize(self.target_pos, self.target_or)
 
 
         root_pos_ = self._robot.data.root_pos_w
@@ -358,13 +366,16 @@ class AnymalCEnv(DirectRLEnv):
         control, predicted_state = compute_mpc_control(mpc, current_state)
         vx_local = control[0] * np.cos(yaw) + control[1] * np.sin(yaw)
         vy_local = -control[0] * np.sin(yaw) + control[1] * np.cos(yaw)
-        self._commands[0][0] = 0.08
+        self._commands[0][0] = self.a + b
         self._commands[0][1] = 0.1
         self._commands[0][2] = -10*(yaw)
 
         #print(vx_local, vy_local, control[3])
 
-        print(self.f_x)
+        #print(self.f_x)
+        pos = self._robot.data.root_pos_w[:, :3] - self._terrain.env_origins
+        des_pos_b = self._commands[:,:2] - pos[:, :2]
+        print(des_pos_b)
         self.count += 1
         self.t_list.append(self.count * (4/200))
         self.force_list.append(-self.f_x)
@@ -385,9 +396,8 @@ class AnymalCEnv(DirectRLEnv):
                     self._robot.data.joint_vel,
                     height_data,
                     self._actions,
-                    #self._forces.squeeze(dim=1),
-                    #self._forces_commands,
-                    #self._forces[:,1].unsqueeze(1),
+                    #self._P[:,0].unsqueeze(1),
+                    #self._P[:,5].unsqueeze(1),
                 )
                 if tensor is not None
             ],
@@ -414,9 +424,9 @@ class AnymalCEnv(DirectRLEnv):
         # action rate
         action_rate = torch.sum(torch.square(self._actions - self._previous_actions), dim=1)
         # feet air time
-        first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
+        first_contact = self._contact_sensor.compute_first_contact(self.step_dt*12)[:, self._feet_ids]
         self._P[:, 1:5][first_contact] = 1
-        first_air = self._contact_sensor.compute_first_air(self.step_dt)[:, self._feet_ids]
+        first_air = self._contact_sensor.compute_first_air(self.step_dt*3)[:, self._feet_ids]
         self._P[:, 1:5][first_air] = 0
         
         # reward machine
@@ -427,19 +437,19 @@ class AnymalCEnv(DirectRLEnv):
         maschera1 = (self._P == self._sequenza_target_1).all(dim=1)
         self._P[:, 5][maschera1] = 1
         self._extra_reward[maschera1] = 2
-        self._P[:, 0][maschera1] = 10
+        self._P[:, 0][maschera1] = 3
         maschera2 = (self._P == self._sequenza_target_2).all(dim=1)
-        self._P[:, 5][maschera2] = 0
+        self._P[:, 5][maschera2] = 2
         self._extra_reward[maschera2] = 2
-        self._P[:, 0][maschera2] = 10
-        #maschera3 = (self._P == self._sequenza_target_3).all(dim=1)
-        #self._P[:, 5][maschera3] = 3
-        #self._extra_reward[maschera3] = 2
-        #self._P[:, 0][maschera3] = 5
-        #maschera4 = (self._P == self._sequenza_target_4).all(dim=1)
-        #self._P[:, 5][maschera4] = 0
-        #self._extra_reward[maschera4] = 2
-        #self._P[:, 0][maschera4] = 5
+        self._P[:, 0][maschera2] = 12
+        maschera3 = (self._P == self._sequenza_target_3).all(dim=1)
+        self._P[:, 5][maschera3] = 3
+        self._extra_reward[maschera3] = 2
+        self._P[:, 0][maschera3] = 3
+        maschera4 = (self._P == self._sequenza_target_4).all(dim=1)
+        self._P[:, 5][maschera4] = 0
+        self._extra_reward[maschera4] = 2
+        self._P[:, 0][maschera4] = 12
         self._extra_reward = self._extra_reward.squeeze()
 
         last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
@@ -527,17 +537,17 @@ class AnymalCEnv(DirectRLEnv):
 
 
 
-        # plot
-        if (self.count > 10):
-            plt.figure(figsize=(10, 8))
-
-            # force plot
-            plt.plot(self.t_list, self.force_list)
-            plt.title('Interaction force', fontsize=18)
-            plt.xlabel('Time [s]', fontsize=14)
-            plt.ylabel('Force [N]', fontsize=14)
-            plt.grid()
-
-            # show plots
-            plt.tight_layout()
-            plt.show()
+        ## plot
+        #if (self.count > 10):
+        #    plt.figure(figsize=(10, 8))
+#
+        #    # force plot
+        #    plt.plot(self.t_list, self.force_list)
+        #    plt.title('Interaction force', fontsize=18)
+        #    plt.xlabel('Time [s]', fontsize=14)
+        #    plt.ylabel('Force [N]', fontsize=14)
+        #    plt.grid()
+#
+        #    # show plots
+        #    plt.tight_layout()
+        #    plt.show()

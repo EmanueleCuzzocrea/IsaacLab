@@ -52,8 +52,8 @@ class EventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (-10.0, 10.0),
-            "torque_range": (-10.0, 10.0),
+            "force_range": (-5.0, 5.0),
+            "torque_range": (-5.0, 5.0),
         },
     )
 
@@ -63,30 +63,12 @@ class EventCfg:
         params={
             "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
             "velocity_range": {
-                "x": (-0.5, 0.5),
-                "y": (-0.5, 0.5),
-                "z": (-0.5, 0.5),
-                "roll": (-0.5, 0.5),
-                "pitch": (-0.5, 0.5),
-                "yaw": (-0.5, 0.5),
-            },
-        },
-    )
-
-    velocity_base = EventTerm(
-        func=mdp.push_by_setting_velocity,
-        mode="interval",
-        is_global_time=True,
-        interval_range_s=(5,10),
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "velocity_range": {
-                "x": (-0.8, 0.8),
-                "y": (-0.8, 0.8),
-                "z": (-0.3, 0.3),
-                "roll": (-0.2, 0.2),
-                "pitch": (-0.2, 0.2),
-                "yaw": (-0.2, 0.2),
+                "x": (-0.0, 0.0),
+                "y": (-0.0, 0.0),
+                "z": (-0.0, 0.0),
+                "roll": (-0.0, 0.0),
+                "pitch": (-0.0, 0.0),
+                "yaw": (-0.0, 0.0),
             },
         },
     )
@@ -143,28 +125,15 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True, track_pose=True,
     )
 
-    ## reward scales
-    #lin_vel_reward_scale = 1.0
-    #yaw_rate_reward_scale = 0.5
-    #z_vel_reward_scale = -2.0
-    #ang_vel_reward_scale = -0.05
-    #joint_torque_reward_scale = -2.5e-5
-    #joint_accel_reward_scale = -2.5e-7
-    #action_rate_reward_scale = -0.01
-    #feet_air_time_reward_scale = 0.5
-    #undersired_contact_reward_scale = -1.0
-    #flat_orientation_reward_scale = -5.0
-
-    lin_vel_reward_scale = 1.0*5
-    yaw_rate_reward_scale = 0.5*5
-    z_vel_reward_scale = -2.0*5
-    ang_vel_reward_scale = -0.05*8
-    joint_torque_reward_scale = -2.5e-8
-    joint_accel_reward_scale = -2.5e-7*6
-    action_rate_reward_scale = -0.01*6
-    feet_air_time_reward_scale = 0.0
+    # reward scales
+    track_position = 0.5
+    track_yaw = -0.2
     undersired_contact_reward_scale = -1.0
-    flat_orientation_reward_scale = -5.0*3
+    z_vel_reward_scale = -2.0
+    ang_vel_reward_scale = -0.05
+    joint_torque_reward_scale = -2.5e-5
+    joint_accel_reward_scale = -2.5e-7
+    action_rate_reward_scale = -0.01
 
 
 @configclass
@@ -217,30 +186,20 @@ class AnymalCEnv(DirectRLEnv):
 
         # X/Y linear velocity and yaw angular velocity commands
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
-
-        # Reward machines parameters
-        self._P = torch.zeros(self.num_envs, 6, device=self.device)
-        self._sequenza_target_1 = torch.tensor([0, 1, 0, 0, 1, 0], device=self.device)
-        self._sequenza_target_2 = torch.tensor([0, 1, 1, 1, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([0, 0, 1, 1, 0, 2], device=self.device)
-        self._sequenza_target_4 = torch.tensor([0, 1, 1, 1, 1, 3], device=self.device)
-
-        self._sequenza_target_0 = torch.tensor([1, 1, 1, 1], device=self.device)
+        self._commands_b = torch.zeros(self.num_envs, 3, device=self.device)
 
         # Logging
         self._episode_sums = {
             key: torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
             for key in [
-                "track_lin_vel_xy_exp",
-                "track_ang_vel_z_exp",
+                "track_position",
+                "track_yaw",
+                "undesired_contacts",
                 "lin_vel_z_l2",
                 "ang_vel_xy_l2",
                 "dof_torques_l2",
                 "dof_acc_l2",
                 "action_rate_l2",
-                "feet_air_time",
-                "undesired_contacts",
-                "flat_orientation_l2",
             ]
         }
         # Get specific body indices
@@ -248,8 +207,6 @@ class AnymalCEnv(DirectRLEnv):
         self._feet_ids, _ = self._contact_sensor.find_bodies(".*FOOT")
         self._undesired_contact_body_ids, _ = self._contact_sensor.find_bodies(".*THIGH")
         self._interaction_ids, _ = self._contact_sensor.find_bodies("interaction")
-
-        self._forces = torch.zeros(self.num_envs, 3, device=self.device)
 
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
@@ -270,19 +227,6 @@ class AnymalCEnv(DirectRLEnv):
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
 
-        ## add a cuboid
-        #self._cuboid_cfg = sim_utils.CuboidCfg(
-        #    size=(10, 0.5, 1),
-        #    physics_material=sim_utils.RigidBodyMaterialCfg(
-        #        static_friction=0.0,
-        #        dynamic_friction=0.0,
-        #    ),
-        #    collision_props=sim_utils.CollisionPropertiesCfg(),
-        #    visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
-        #)
-        #self._cuboid_cfg.func("/World/envs/env_.*/Cone", self._cuboid_cfg, translation=(4.5, -1.0, 0.5))
-
-
     def _pre_physics_step(self, actions: torch.Tensor):
         self._actions = actions.clone()
         self._processed_actions = self.cfg.action_scale * self._actions + self._robot.data.default_joint_pos
@@ -291,11 +235,7 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        aa = self._contact_sensor.data.net_forces_w[:, self._interaction_ids]
-        aa = aa.squeeze(dim=1)
-        self._forces[:,0] *= 0
-        self._forces[:,2] *= 0
-        self._forces = aa
+        feet_force = self._contact_sensor.data.net_forces_w[:, self._feet_ids]
 
         self._previous_actions = self._actions.clone()
         height_data = None
@@ -308,13 +248,11 @@ class AnymalCEnv(DirectRLEnv):
                     self._robot.data.root_lin_vel_b,
                     self._robot.data.root_ang_vel_b,
                     self._robot.data.projected_gravity_b,
-                    self._commands,
+                    #self._commands_b,
                     self._robot.data.joint_pos - self._robot.data.default_joint_pos,
                     self._robot.data.joint_vel,
                     height_data,
                     self._actions,
-                    self._P[:,0].unsqueeze(1),
-                    self._P[:,5].unsqueeze(1),
                 )
                 if tensor is not None
             ],
@@ -324,12 +262,35 @@ class AnymalCEnv(DirectRLEnv):
         return observations
 
     def _get_rewards(self) -> torch.Tensor:
-        # linear velocity tracking
-        lin_vel_error = torch.sum(torch.square(self._commands[:, :2] - self._robot.data.root_lin_vel_b[:, :2]), dim=1)
-        lin_vel_error_mapped = torch.exp(-lin_vel_error / 0.25)
+        pos = self._robot.data.root_pos_w[:, :3] - self._terrain.env_origins
+        des_pos_b = self._commands[:,:2] - pos[:, :2]
+        distance = torch.norm(des_pos_b, dim=1)
+        position_error = 1 - torch.tanh(distance / 2.0)
+
+        root_quat_ = self._robot.data.root_quat_w
+        w = root_quat_[:, 0]
+        x = root_quat_[:, 1]
+        y = root_quat_[:, 2]
+        z = root_quat_[:, 3]
+        
+        # yaw (z-axis rotation)
+        yaw1 = 2 * (w * z + x * y)
+        yaw2 = 1 - 2 * (y * y + z * z)
+        yaw = torch.atan2(yaw1, yaw2)
+
         # yaw rate tracking
-        yaw_rate_error = torch.square(self._commands[:, 2] - self._robot.data.root_ang_vel_b[:, 2])
-        yaw_rate_error_mapped = torch.exp(-yaw_rate_error / 0.25)
+        yaw_error = torch.abs(self._commands[:, 2] - yaw)
+
+        self._commands_b[:, :2] = des_pos_b
+        self._commands_b[:, 2] = yaw_error
+
+        # undersired contacts
+        net_contact_forces = self._contact_sensor.data.net_forces_w_history
+        is_contact = (
+            torch.max(torch.norm(net_contact_forces[:, :, self._undesired_contact_body_ids], dim=-1), dim=1)[0] > 1.0
+        )
+        contacts = torch.sum(is_contact, dim=1)
+
         # z velocity tracking
         z_vel_error = torch.square(self._robot.data.root_lin_vel_b[:, 2])
         # angular velocity x/y
@@ -340,79 +301,20 @@ class AnymalCEnv(DirectRLEnv):
         joint_accel = torch.sum(torch.square(self._robot.data.joint_acc), dim=1)
         # action rate
         action_rate = torch.sum(torch.square(self._actions - self._previous_actions), dim=1)
-        # feet air time
-        first_contact = self._contact_sensor.compute_first_contact(self.step_dt*2)[:, self._feet_ids]
-        self._P[:, 1:5][first_contact] = 1
-        first_air = self._contact_sensor.compute_first_air(self.step_dt*2)[:, self._feet_ids]
-        self._P[:, 1:5][first_air] = 0
-        
-        # reward machine
-        self._extra_reward = torch.zeros(self.num_envs, 1, device=self.device)
-        mask_delta = self._P[:, 0] > 0
-        self._P[:, 0][mask_delta] -= 1
 
-        maschera1 = (self._P == self._sequenza_target_1).all(dim=1)
-        self._P[:, 5][maschera1] = 1
-        self._extra_reward[maschera1] = 2
-        self._P[:, 0][maschera1] = 8
-        maschera2 = (self._P == self._sequenza_target_2).all(dim=1)
-        self._P[:, 5][maschera2] = 2
-        self._extra_reward[maschera2] = 2
-        self._P[:, 0][maschera2] = 8
-        maschera3 = (self._P == self._sequenza_target_3).all(dim=1)
-        self._P[:, 5][maschera3] = 3
-        self._extra_reward[maschera3] = 2
-        self._P[:, 0][maschera3] = 8
-        maschera4 = (self._P == self._sequenza_target_4).all(dim=1)
-        self._P[:, 5][maschera4] = 0
-        self._extra_reward[maschera4] = 2
-        self._P[:, 0][maschera4] = 8
-        self._extra_reward = self._extra_reward.squeeze()
-
-        last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
-        air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * (
-            torch.norm(self._commands[:, :2], dim=1) > 0.1
-        )
-        
-        # undersired contacts
-        net_contact_forces = self._contact_sensor.data.net_forces_w_history
-        is_contact = (
-            torch.max(torch.norm(net_contact_forces[:, :, self._undesired_contact_body_ids], dim=-1), dim=1)[0] > 1.0
-        )
-        contacts = torch.sum(is_contact, dim=1)
-        
-        # flat orientation
-        flat_orientation = torch.sum(torch.square(self._robot.data.projected_gravity_b[:, :2]), dim=1)
-
-        ## cop
-        #pos_feet = self._contact_sensor.data.pos_w[:, self._feet_ids]
-        #pos_feet2 = pos_feet[:, :, :2]
-        #cop = torch.sum(pos_feet2, dim=1)
-        #cop = cop/4
-        #root_pos_ = self._robot.data.root_pos_w[:, :2]
-#
-        #error = torch.abs(cop - root_pos_)
-        #error2 = torch.sum(error, dim=1)
 
         rewards = {
-            "track_lin_vel_xy_exp": lin_vel_error_mapped * self.cfg.lin_vel_reward_scale * self.step_dt,
-            "track_ang_vel_z_exp": yaw_rate_error_mapped * self.cfg.yaw_rate_reward_scale * self.step_dt,
+            #"track_position": position_error * self.cfg.track_position * self.step_dt,
+            #"track_yaw": yaw_error * self.cfg.track_yaw * self.step_dt,
+            "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
             "lin_vel_z_l2": z_vel_error * self.cfg.z_vel_reward_scale * self.step_dt,
             "ang_vel_xy_l2": ang_vel_error * self.cfg.ang_vel_reward_scale * self.step_dt,
             "dof_torques_l2": joint_torques * self.cfg.joint_torque_reward_scale * self.step_dt,
             "dof_acc_l2": joint_accel * self.cfg.joint_accel_reward_scale * self.step_dt,
             "action_rate_l2": action_rate * self.cfg.action_rate_reward_scale * self.step_dt,
-            "feet_air_time": air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
-            "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
-            "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
         
-        mask_extra = self._extra_reward > 0
-        reward[mask_extra] *= 5
-
-        #maschera0 = (self._P[:, 1:5] == self._sequenza_target_0).all(dim=1)
-        #reward[maschera0] += 0.0001
 
         # Logging
         for key, value in rewards.items():
@@ -437,7 +339,10 @@ class AnymalCEnv(DirectRLEnv):
         self._previous_actions[env_ids] = 0.0
         
         # Sample new commands
-        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.5, 0.5)
+        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-3.0, 3.0)
+
+        yaw_ = random.uniform(-3.14, 3.14)
+        self._commands[env_ids, 2] = yaw_
 
         numero = random.randint(1, 15)
         if numero == 5:
