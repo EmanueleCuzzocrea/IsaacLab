@@ -29,8 +29,8 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.6, 0.8),
-            "dynamic_friction_range": (0.3, 0.6),
+            "static_friction_range": (0.8, 0.8),
+            "dynamic_friction_range": (0.6, 0.6),
             "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
@@ -46,16 +46,16 @@ class EventCfg:
         },
     )
 
-    # reset
-    base_external_force_torque = EventTerm(
-        func=mdp.apply_external_force_torque,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (-10.0, 10.0),
-            "torque_range": (-10.0, 10.0),
-        },
-    )
+    ## reset
+    #base_external_force_torque = EventTerm(
+    #    func=mdp.apply_external_force_torque,
+    #    mode="reset",
+    #    params={
+    #        "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #        "force_range": (-10.0, 10.0),
+    #        "torque_range": (-10.0, 10.0),
+    #    },
+    #)
 
     #reset_base = EventTerm(
     #    func=mdp.reset_root_state_uniform,
@@ -143,15 +143,14 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
         prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True, track_pose=True,
     )
 
-    chunk_4 = "\d\d\d[02468]"
     cuboid_cfg: RigidObjectCfg = RigidObjectCfg(
-        prim_path=f"/World/envs/env_{chunk_4}/Cuboid",
+        prim_path=f"/World/envs/env_.*/Cuboid",
         spawn=sim_utils.CuboidCfg(
-            size=(0.5, 10.0, 1),
+            size=(0.5, 10.0, 1.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=100000,
+                compliant_contact_stiffness=1000,
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
@@ -305,6 +304,8 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
+        print(self._forces)
+
         self._previous_actions = self._actions.clone()
         height_data = None
         if isinstance(self.cfg, AnymalCRoughEnvCfg):
@@ -461,22 +462,10 @@ class AnymalCEnv(DirectRLEnv):
         
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.5, 0.5)
-
-        pari = env_ids[env_ids % 2 == 0]
-        dispari = env_ids[env_ids % 2 != 0]
-
-        yaw_ = random.uniform(-3.14, 3.14)
-        self._commands[dispari, 2] = yaw_
-        numero = random.randint(1, 10)
-        if numero == 5:
-            self._commands[dispari,0] *= 0.0
-            self._commands[dispari,1] *= 0.0
     
-        self._commands[pari, 2] = 0.0
-        x_ = random.uniform(0.0, 0.3)
-        y_ = random.uniform(-0.2, 0.2)
-        self._commands[pari,0] = x_
-        self._commands[pari,1] = y_
+        self._commands[env_ids, 2] = 0.0
+        self._commands[env_ids,0] = 0.1
+        self._commands[env_ids,1] = 0.0
 
       
         # Reset robot state

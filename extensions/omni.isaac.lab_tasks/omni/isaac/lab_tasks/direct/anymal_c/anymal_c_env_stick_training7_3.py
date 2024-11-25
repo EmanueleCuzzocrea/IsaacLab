@@ -17,6 +17,7 @@ import random
 from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.markers.config import FRAME_MARKER_CFG
 from omni.isaac.lab.utils.math import subtract_frame_transforms
+import omni.isaac.core.utils.prims as prim_utils
 # Pre-defined configs
 from omni.isaac.lab_assets.anymal import ANYMAL_STICK_CFG  # isort: skip
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
@@ -29,8 +30,8 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.6, 0.8),
-            "dynamic_friction_range": (0.3, 0.6),
+            "static_friction_range": (0.8, 0.8),
+            "dynamic_friction_range": (0.6, 0.6),
             "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
@@ -46,16 +47,16 @@ class EventCfg:
         },
     )
 
-    # reset
-    base_external_force_torque = EventTerm(
-        func=mdp.apply_external_force_torque,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (-10.0, 10.0),
-            "torque_range": (-10.0, 10.0),
-        },
-    )
+    ## reset
+    #base_external_force_torque = EventTerm(
+    #    func=mdp.apply_external_force_torque,
+    #    mode="reset",
+    #    params={
+    #        "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #        "force_range": (-10.0, 10.0),
+    #        "torque_range": (-10.0, 10.0),
+    #    },
+    #)
 
     #reset_base = EventTerm(
     #    func=mdp.reset_root_state_uniform,
@@ -141,22 +142,6 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     # sensors
     contact_sensor: ContactSensorCfg = ContactSensorCfg(
         prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True, track_pose=True,
-    )
-
-    chunk_4 = "\d\d\d[02468]"
-    cuboid_cfg: RigidObjectCfg = RigidObjectCfg(
-        prim_path=f"/World/envs/env_{chunk_4}/Cuboid",
-        spawn=sim_utils.CuboidCfg(
-            size=(0.5, 10.0, 1),
-            physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=0.5,
-                dynamic_friction=0.5,
-                compliant_contact_stiffness=100000,
-            ),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
-        ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.25, 0.0, 0.5)),
     )
 
     # reward scales
@@ -293,8 +278,21 @@ class AnymalCEnv(DirectRLEnv):
         light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
         light_cfg.func("/World/Light", light_cfg)
 
-        # Cuboid
-        self._cuboid = RigidObject(self.cfg.cuboid_cfg)
+
+        for i in range(2, 3000, 2):
+            prim_path = f"/World/envs/env_{i}/Cuboid"
+            
+            self._cuboid_cfg = sim_utils.CuboidCfg(
+                size=(0.5, 10.0, 1.0),
+                physics_material=sim_utils.RigidBodyMaterialCfg(
+                    static_friction=0.5,# + random.uniform(-0.2, 0.2),
+                    dynamic_friction=0.5,# + random.uniform(-0.2, 0.2),
+                    compliant_contact_stiffness=1000,# + random.uniform(-200, 200),
+                ),
+                collision_props=sim_utils.CollisionPropertiesCfg(),
+                visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
+            )
+            self._cuboid_cfg.func(prim_path, self._cuboid_cfg, translation=(1.25, 0.0, 0.5))
 
 
     def _pre_physics_step(self, actions: torch.Tensor):
@@ -474,7 +472,7 @@ class AnymalCEnv(DirectRLEnv):
     
         self._commands[pari, 2] = 0.0
         x_ = random.uniform(0.0, 0.3)
-        y_ = random.uniform(-0.2, 0.2)
+        y_ = random.uniform(-0.15, 0.15)
         self._commands[pari,0] = x_
         self._commands[pari,1] = y_
 

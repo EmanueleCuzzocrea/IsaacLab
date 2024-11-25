@@ -454,9 +454,9 @@ class AnymalCEnv(DirectRLEnv):
             env_ids = self._robot._ALL_INDICES
         self._robot.reset(env_ids)
         super()._reset_idx(env_ids)
-        if len(env_ids) == self.num_envs:
-            # Spread out the resets to avoid spikes in training when many environments reset at a similar time
-            self.episode_length_buf[:] = torch.randint_like(self.episode_length_buf, high=int(self.max_episode_length))
+        #if len(env_ids) == self.num_envs:
+        #    # Spread out the resets to avoid spikes in training when many environments reset at a similar time
+        #    self.episode_length_buf[:] = torch.randint_like(self.episode_length_buf, high=int(self.max_episode_length))
         self._actions[env_ids] = 0.0
         self._previous_actions[env_ids] = 0.0
         
@@ -464,10 +464,8 @@ class AnymalCEnv(DirectRLEnv):
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.5, 0.5)
     
         self._commands[env_ids, 2] = 0.0
-        x_ = random.uniform(0.0, 0.3)
-        y_ = random.uniform(-0.15, 0.15)
-        self._commands[env_ids,0] = 0.08
-        self._commands[env_ids,1] = 0.12
+        self._commands[env_ids,0] = 0.1
+        self._commands[env_ids,1] = 0.0
 
       
         # Reset robot state
