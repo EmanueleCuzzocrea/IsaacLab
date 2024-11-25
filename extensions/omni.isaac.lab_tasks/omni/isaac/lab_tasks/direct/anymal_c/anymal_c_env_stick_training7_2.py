@@ -151,7 +151,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=100000,
+                compliant_contact_stiffness=10000,
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
@@ -173,6 +173,8 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     flat_orientation_reward_scale = -5.0*2
 
     track_yaw = 1.0
+    force_variance = -0.000001
+    force_acceleration = 0.0
 
     #lin_vel_reward_scale = 1.0*5
     #yaw_rate_reward_scale = 0.5*5
@@ -263,6 +265,7 @@ class AnymalCEnv(DirectRLEnv):
                 "feet_air_time",
                 "undesired_contacts",
                 "flat_orientation_l2",
+                "force_acceleration",
             ]
         }
         # Get specific body indices
@@ -273,6 +276,8 @@ class AnymalCEnv(DirectRLEnv):
 
         self._forces = torch.zeros(self.num_envs, 1, device=self.device)
         self.yaw = torch.zeros(self.num_envs, 1, device=self.device)
+
+        self._forces_buffer = torch.zeros(self.num_envs, 10, device=self.device)
 
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
@@ -323,6 +328,7 @@ class AnymalCEnv(DirectRLEnv):
                     height_data,
                     self._actions,
                     self._forces,
+                    #self._forces_buffer,
                     self._P,
                 )
                 if tensor is not None
@@ -415,6 +421,18 @@ class AnymalCEnv(DirectRLEnv):
         z_component *= torch.cos(self.yaw[:, 0])
         self._forces[:,0] = z_component
 
+        # interaction force buffer
+        self._forces_buffer[:, :-1] = self._forces_buffer[:, 1:].clone()
+        self._forces_buffer[:, -1] = self._forces[:,0].squeeze()
+        
+        # force variance
+        force_variance = self._forces_buffer.var(dim=1)
+
+        # force acceleration
+        first_differences = self._forces_buffer[:, 1:] - self._forces_buffer[:, :-1]
+        second_differences = first_differences[:, 1:] - first_differences[:, :-1]
+        force_acceleration = second_differences.abs().mean(dim=1)
+
         rewards = {
             "track_lin_vel_x_exp": lin_vel_error_mapped_x * self.cfg.lin_vel_reward_scale_x * self.step_dt,
             "track_lin_vel_y_exp": lin_vel_error_mapped_y * self.cfg.lin_vel_reward_scale_y * self.step_dt,
@@ -428,6 +446,7 @@ class AnymalCEnv(DirectRLEnv):
             "feet_air_time": air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
             "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
             "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
+            "force_acceleration": force_acceleration * self.cfg.force_acceleration * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
 
