@@ -152,7 +152,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=10000,
+                compliant_contact_stiffness=50000,
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
@@ -280,6 +280,8 @@ class AnymalCEnv(DirectRLEnv):
 
         self._forces_buffer = torch.zeros(self.num_envs, 10, device=self.device)
 
+        self._forces_reference = torch.rand(1548, 1, device=self.device) * 10
+
         self.a = 0.0
 
         # Plot
@@ -322,10 +324,10 @@ class AnymalCEnv(DirectRLEnv):
         self.t_list.append(self.count * (4/200))
         self.force_list.append(self._forces[0,0].item())
 
-        self.a += 0.0001*(15 - self._forces[0,0].item())
-        b = 0.0005*(15 - self._forces[0,0].item())
-        self._commands[0][0] = self.a
-        print(self.a)
+        self.a += 0.0001*(50 - self._forces[0,0].item())
+        b = 0.0003*(50 - self._forces[0,0].item())
+        self._commands[0][0] = self.a + b
+        #print(self.a)
         self._commands[0][1] = 0.0
 
         self._previous_actions = self._actions.clone()
@@ -438,7 +440,7 @@ class AnymalCEnv(DirectRLEnv):
         z_component = torch.abs(interaction_force[:, 0])
         z_component *= torch.cos(self.yaw[:, 0])
         self._forces[:,0] = z_component
-        #print(self._forces)
+        print(self._forces)
 
         # interaction force buffer
         self._forces_buffer[:, :-1] = self._forces_buffer[:, 1:].clone()
@@ -504,6 +506,9 @@ class AnymalCEnv(DirectRLEnv):
         self._commands[env_ids,0] = 0.1
         self._commands[env_ids,1] = 0.0
 
+        # Sample new force commands
+        self._forces_reference = torch.rand(1548, 1, device=self.device) * 10
+        #print(self._forces_reference)
       
         # Reset robot state
         joint_pos = self._robot.data.default_joint_pos[env_ids]

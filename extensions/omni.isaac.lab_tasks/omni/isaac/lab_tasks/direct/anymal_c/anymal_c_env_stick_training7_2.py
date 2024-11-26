@@ -151,7 +151,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=10000,
+                compliant_contact_stiffness=50000,
             ),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
@@ -174,7 +174,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
 
     track_yaw = 1.0
     force_variance = -0.000001
-    force_acceleration = 0.0
+    force_acceleration = -0.0001
 
     #lin_vel_reward_scale = 1.0*5
     #yaw_rate_reward_scale = 0.5*5
@@ -279,6 +279,10 @@ class AnymalCEnv(DirectRLEnv):
 
         self._forces_buffer = torch.zeros(self.num_envs, 10, device=self.device)
 
+        self._forces_reference = torch.rand(self.num_envs, 1, device=self.device) * 10
+        self._integrators = torch.zeros(self.num_envs, 1, device=self.device)
+        self._proportional = torch.zeros(self.num_envs, 1, device=self.device)
+
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
         self.scene.articulations["robot"] = self._robot
@@ -310,6 +314,15 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
+        mask = (torch.arange(4096, device=self.device) >= 1000) & \
+            (torch.arange(4096, device=self.device) <= 4095) & \
+            (torch.arange(4096, device=self.device) % 2 == 0)
+
+        self._integrators[mask, 0] += 0.0001*(self._forces_reference[mask, 0] - self._forces[mask, 0])
+        self._proportional[mask, 0] = 0.0003*(self._forces_reference[mask, 0] - self._forces[mask, 0])
+        self._commands[mask, 0] = self._integrators[mask, 0] + self._proportional[mask, 0]
+
+
         self._previous_actions = self._actions.clone()
         height_data = None
         if isinstance(self.cfg, AnymalCRoughEnvCfg):
@@ -454,7 +467,7 @@ class AnymalCEnv(DirectRLEnv):
         reward[mask_extra] += 0.15
 
         mask_force = self._forces.squeeze(dim=1) > 0
-        reward[mask_force] += 0.01
+        reward[mask_force] += 0.001
 
         # Logging
         for key, value in rewards.items():
@@ -481,8 +494,8 @@ class AnymalCEnv(DirectRLEnv):
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.5, 0.5)
 
-        pari = env_ids[env_ids % 2 == 0]
-        dispari = env_ids[env_ids % 2 != 0]
+        dispari = env_ids[(env_ids % 2 != 0) | (env_ids < 1000)]
+        pari = env_ids[(env_ids % 2 == 0) & (env_ids > 999)]
 
         yaw_ = random.uniform(-3.14, 3.14)
         self._commands[dispari, 2] = yaw_
@@ -496,6 +509,10 @@ class AnymalCEnv(DirectRLEnv):
         y_ = random.uniform(-0.2, 0.2)
         self._commands[pari,0] = x_
         self._commands[pari,1] = y_
+
+        # Sample new force commands
+        self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(15.0, 50.0)
+        self._integrators[pari] = 0.0
 
       
         # Reset robot state
