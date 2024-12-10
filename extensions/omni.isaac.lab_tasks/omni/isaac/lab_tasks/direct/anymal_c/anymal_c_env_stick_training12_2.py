@@ -163,10 +163,12 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=1000,
+                compliant_contact_stiffness=10000,
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                max_linear_velocity=0.0,
+                max_angular_velocity=0.0,
                 disable_gravity=True,
             ),
             mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
@@ -360,7 +362,7 @@ class AnymalCEnv(DirectRLEnv):
     def _get_observations(self) -> dict:
         self.a += 0.0003*(10 - self._forces[0,0].item())
         b = 0.0003*(10 - self._forces[0,0].item())
-        self._forces_reference[:, 0] = 10.0
+        self._forces_reference[:, 0] = 20.0
         if (self._forces[0,0].item() > 0.0):
             self._commands[:, 0] = 0.0
         else:
@@ -385,9 +387,7 @@ class AnymalCEnv(DirectRLEnv):
                     height_data,
                     self._actions,
                     self._forces,
-                    #self._forces_boolean,
                     self._forces_reference,
-                    #self._forces_buffer_normalized,
                     self._P,
                     self._state,
                     self._phase,
@@ -643,7 +643,7 @@ class AnymalCEnv(DirectRLEnv):
         self._state[env_ids, 0] = 0
         self._phase[env_ids, 0] = 0
         self._go[env_ids, 0] = 0
-        self._frequency[env_ids, 0] = 4
+        self._frequency[env_ids, 0] = 3
       
         # Reset robot state
         joint_pos = self._robot.data.default_joint_pos[env_ids]
@@ -653,6 +653,10 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+
+        self._cuboid.reset(env_ids)
+        cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        self._cuboid.write_root_pose_to_sim(default_root_state[:, :7] + cube_used, env_ids)
 
         # Logging
         extras = dict()

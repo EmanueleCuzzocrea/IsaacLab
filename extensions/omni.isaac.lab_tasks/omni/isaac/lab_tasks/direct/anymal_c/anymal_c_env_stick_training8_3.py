@@ -146,49 +146,8 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     )
 
     chunk_4 = "\d\d\d[02468]"
-    cuboid_cfg: RigidObjectCfg = RigidObjectCfg(
-        prim_path=f"/World/envs/env_.*/Cuboid",
-        spawn=sim_utils.CuboidCfg(
-            size=(0.5, 2.5, 1.0),
-            physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=0.5,
-                dynamic_friction=0.5,
-                compliant_contact_stiffness=250,
-                restitution=0.0,
-            ),
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(
-                disable_gravity=True,
-            ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
-        ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 10.0)),
-    )
-
-    chunk_4 = "\d\d\d[02468]"
-    cuboid_cfg1: RigidObjectCfg = RigidObjectCfg(
-        prim_path=f"/World/envs/env_.*/Cuboid1",
-        spawn=sim_utils.CuboidCfg(
-            size=(0.5, 2.5, 1.0),
-            physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=0.5,
-                dynamic_friction=0.5,
-                compliant_contact_stiffness=500,
-                restitution=0.0,
-            ),
-            rigid_props=sim_utils.RigidBodyPropertiesCfg(
-                disable_gravity=True,
-            ),
-            mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
-            collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.7137, 0.7569), metallic=0.2),
-        ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 20.0)),
-    )
-    chunk_4 = "\d\d\d[02468]"
-    cuboid_cfg2: RigidObjectCfg = RigidObjectCfg(
-        prim_path=f"/World/envs/env_.*/Cuboid2",
+    cuboid_cfg0: RigidObjectCfg = RigidObjectCfg(
+        prim_path=f"/World/envs/env_.*/Cuboid0",
         spawn=sim_utils.CuboidCfg(
             size=(0.5, 2.5, 1.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -198,6 +157,52 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                max_linear_velocity=0.0,
+                max_angular_velocity=0.0,
+                disable_gravity=True,
+            ),
+            mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 10.0)),
+    )
+
+    cuboid_cfg1: RigidObjectCfg = RigidObjectCfg(
+        prim_path=f"/World/envs/env_.*/Cuboid1",
+        spawn=sim_utils.CuboidCfg(
+            size=(0.5, 2.5, 1.0),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                static_friction=0.5,
+                dynamic_friction=0.5,
+                compliant_contact_stiffness=2500,
+                restitution=0.0,
+            ),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                max_linear_velocity=0.0,
+                max_angular_velocity=0.0,
+                disable_gravity=True,
+            ),
+            mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.7137, 0.7569), metallic=0.2),
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 20.0)),
+    )
+
+    cuboid_cfg2: RigidObjectCfg = RigidObjectCfg(
+        prim_path=f"/World/envs/env_.*/Cuboid2",
+        spawn=sim_utils.CuboidCfg(
+            size=(0.5, 2.5, 1.0),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                static_friction=0.5,
+                dynamic_friction=0.5,
+                compliant_contact_stiffness=5000,
+                restitution=0.0,
+            ),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                max_linear_velocity=0.0,
+                max_angular_velocity=0.0,
                 disable_gravity=True,
             ),
             mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
@@ -207,7 +212,6 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
         init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 25.0)),
     )
 
-    chunk_4 = "\d\d\d[02468]"
     cuboid_cfg3: RigidObjectCfg = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Cuboid3",
         spawn=sim_utils.CuboidCfg(
@@ -215,10 +219,12 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=2000,
+                compliant_contact_stiffness=6500,
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                max_linear_velocity=0.0,
+                max_angular_velocity=0.0,
                 disable_gravity=True,
             ),
             mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
@@ -228,49 +234,50 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
         init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 30.0)),
     )
 
-    #chunk_4 = "\d\d\d[02468]"
-    #cuboid_cfg4: RigidObjectCfg = RigidObjectCfg(
-    #    prim_path=f"/World/envs/env_.*/Cuboid4",
-    #    spawn=sim_utils.CuboidCfg(
-    #        size=(0.5, 4.0, 2.0),
-    #        physics_material=sim_utils.RigidBodyMaterialCfg(
-    #            static_friction=0.5,
-    #            dynamic_friction=0.5,
-    #            compliant_contact_stiffness=5000,
-    #            restitution=0.0,
-    #        ),
-    #        rigid_props=sim_utils.RigidBodyPropertiesCfg(
-    #            disable_gravity=True,
-    #        ),
-    #        mass_props=sim_utils.MassPropertiesCfg(mass=1000.0),
-    #        collision_props=sim_utils.CollisionPropertiesCfg(),
-    #        visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.8549, 0.7255), metallic=0.2),
-    #    ),
-    #    init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 10.0)),
-    #)
-#
-    #chunk_4 = "\d\d\d[02468]"
-    #cuboid_cfg5: RigidObjectCfg = RigidObjectCfg(
-    #    prim_path=f"/World/envs/env_.*/Cuboid5",
-    #    spawn=sim_utils.CuboidCfg(
-    #        size=(0.5, 4.0, 2.0),
-    #        physics_material=sim_utils.RigidBodyMaterialCfg(
-    #            static_friction=0.5,
-    #            dynamic_friction=0.5,
-    #            compliant_contact_stiffness=6000,
-    #            restitution=0.0,
-    #        ),
-    #        rigid_props=sim_utils.RigidBodyPropertiesCfg(
-    #            disable_gravity=True,
-    #        ),
-    #        mass_props=sim_utils.MassPropertiesCfg(mass=1000.0),
-    #        collision_props=sim_utils.CollisionPropertiesCfg(),
-    #        visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.5961, 0.9843, 0.5961), metallic=0.2),
-    #    ),
-    #    init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 10.0)),
-    #)
-#
-    #chunk_4 = "\d\d\d[02468]"
+    cuboid_cfg4: RigidObjectCfg = RigidObjectCfg(
+        prim_path=f"/World/envs/env_.*/Cuboid4",
+        spawn=sim_utils.CuboidCfg(
+            size=(0.5, 2.5, 1.0),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                static_friction=0.5,
+                dynamic_friction=0.5,
+                compliant_contact_stiffness=8000,
+                restitution=0.0,
+            ),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                max_linear_velocity=0.0,
+                max_angular_velocity=0.0,
+                disable_gravity=True,
+            ),
+            mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.8549, 0.7255), metallic=0.2),
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 35.0)),
+    )
+
+    cuboid_cfg5: RigidObjectCfg = RigidObjectCfg(
+        prim_path=f"/World/envs/env_.*/Cuboid5",
+        spawn=sim_utils.CuboidCfg(
+            size=(0.5, 2.5, 1.0),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                static_friction=0.5,
+                dynamic_friction=0.5,
+                compliant_contact_stiffness=10000,
+                restitution=0.0,
+            ),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                max_linear_velocity=0.0,
+                max_angular_velocity=0.0,
+                disable_gravity=True,
+            ),
+            mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.5961, 0.9843, 0.5961), metallic=0.2),
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 40.0)),
+    )
+
     #cuboid_cfg6: RigidObjectCfg = RigidObjectCfg(
     #    prim_path=f"/World/envs/env_.*/Cuboid6",
     #    spawn=sim_utils.CuboidCfg(
@@ -290,8 +297,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     #    ),
     #    init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 10.0)),
     #)
-#
-    #chunk_4 = "\d\d\d[02468]"
+
     #cuboid_cfg7: RigidObjectCfg = RigidObjectCfg(
     #    prim_path=f"/World/envs/env_.*/Cuboid7",
     #    spawn=sim_utils.CuboidCfg(
@@ -311,8 +317,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     #    ),
     #    init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 10.0)),
     #)
-#
-    #chunk_4 = "\d\d\d[02468]"
+
     #cuboid_cfg8: RigidObjectCfg = RigidObjectCfg(
     #    prim_path=f"/World/envs/env_.*/Cuboid8",
     #    spawn=sim_utils.CuboidCfg(
@@ -332,8 +337,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     #    ),
     #    init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 10.0)),
     #)
-#
-    #chunk_4 = "\d\d\d[02468]"
+
     #cuboid_cfg9: RigidObjectCfg = RigidObjectCfg(
     #    prim_path=f"/World/envs/env_.*/Cuboid9",
     #    spawn=sim_utils.CuboidCfg(
@@ -512,12 +516,12 @@ class AnymalCEnv(DirectRLEnv):
         light_cfg.func("/World/Light", light_cfg)
 
         # Cuboid
-        self._cuboid = RigidObject(self.cfg.cuboid_cfg)
+        self._cuboid0 = RigidObject(self.cfg.cuboid_cfg0)
         self._cuboid1 = RigidObject(self.cfg.cuboid_cfg1)
         self._cuboid2 = RigidObject(self.cfg.cuboid_cfg2)
         self._cuboid3 = RigidObject(self.cfg.cuboid_cfg3)
-        #self._cuboid4 = RigidObject(self.cfg.cuboid_cfg4)
-        #self._cuboid5 = RigidObject(self.cfg.cuboid_cfg5)
+        self._cuboid4 = RigidObject(self.cfg.cuboid_cfg4)
+        self._cuboid5 = RigidObject(self.cfg.cuboid_cfg5)
         #self._cuboid6 = RigidObject(self.cfg.cuboid_cfg6)
         #self._cuboid7 = RigidObject(self.cfg.cuboid_cfg7)
         #self._cuboid8 = RigidObject(self.cfg.cuboid_cfg8)
@@ -736,6 +740,15 @@ class AnymalCEnv(DirectRLEnv):
         #mask_force = self._forces.squeeze(dim=1) > 0.0
         #reward[mask_force] += 0.001
 
+        #mask_livello1 = self._level.squeeze() == 1
+        #reward[mask_livello1] *= 1.5
+#
+        #mask_livello2 = self._level.squeeze() == 2
+        #reward[mask_livello2] *= 2.0
+#
+        #mask_livello3 = self._level.squeeze() == 3
+        #reward[mask_livello3] *= 2.5
+
         # Logging
         for key, value in rewards.items():
             self._episode_sums[key] += value
@@ -779,7 +792,7 @@ class AnymalCEnv(DirectRLEnv):
         self._commands[pari,1] = 0.0
 
         # Sample new force commands
-        self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(10.0, 10.0)
+        self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(20.0, 20.0)
         self._integrators[env_ids] = 0.0
         
 
@@ -805,19 +818,21 @@ class AnymalCEnv(DirectRLEnv):
         # Curriculum learning
         #self._cuboid.reset(env_ids)
         #self._cuboid1.reset(env_ids)
-        mask_level_up = (self._forces_buffer.min(dim=1).values > 7) & (self._forces_buffer.max(dim=1).values < 13)
+        mask_level_up = (self._forces_buffer.min(dim=1).values > 15) & (self._forces_buffer.max(dim=1).values < 25)
         selected_mask_up = mask_level_up[env_ids]
         self._level[env_ids[selected_mask_up], 0] += 1
 
-        mask_level_down = (self._forces_buffer.min(dim=1).values < 5) | (self._forces_buffer.max(dim=1).values > 25)
+        mask_level_down = (self._forces_buffer.min(dim=1).values < 10) | (self._forces_buffer.max(dim=1).values > 30)
         selected_mask_down = mask_level_down[env_ids]
         self._level[env_ids[selected_mask_down], 0] -= 1
-        self._level[:, 0].clamp_(min=0)
+        self._level[:, 0].clamp_(min=0, max=5)
 
-        cube_used = torch.tensor([1.15, 0.0, 0.0], device=self.device)
-        cube_not_used = torch.tensor([1.15, 0.0, 10.0], device=self.device)
-        cube_not_used2 = torch.tensor([1.15, 0.0, 20.0], device=self.device)
-        cube_not_used3 = torch.tensor([1.15, 0.0, 25.0], device=self.device)
+        cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        cube_not_used1 = torch.tensor([1.15, 0.0, 10.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        cube_not_used2 = torch.tensor([1.15, 0.0, 20.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        cube_not_used3 = torch.tensor([1.15, 0.0, 25.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        cube_not_used4 = torch.tensor([1.15, 0.0, 30.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        cube_not_used5 = torch.tensor([1.15, 0.0, 35.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
 
         livello0 = env_ids[(self._level[env_ids, 0] == 0) & (env_ids % 2 == 0) & (env_ids > 999)]
         livello1 = env_ids[(self._level[env_ids, 0] == 1) & (env_ids % 2 == 0) & (env_ids > 999)]
@@ -831,65 +846,42 @@ class AnymalCEnv(DirectRLEnv):
         livello9 = env_ids[(self._level[env_ids, 0] == 9) & (env_ids % 2 == 0) & (env_ids > 999)]
 
         # Livello 0
-        default_root_state_livello0 = self._robot.data.default_root_state[livello0]
-        default_root_state_livello0[:, :3] += self._terrain.env_origins[livello0]
-        cube_pose_used_livello0 = default_root_state_livello0.clone()
-        cube_pose_not_used_livello0 = default_root_state_livello0.clone()
-        cube_pose_not_used_livello0_2 = default_root_state_livello0.clone()
-        cube_pose_not_used_livello0_3 = default_root_state_livello0.clone()
-        cube_pose_used_livello0[:, :3] += cube_used
-        cube_pose_not_used_livello0[:, :3] += cube_not_used
-        cube_pose_not_used_livello0_2[:, :3] += cube_not_used2
-        cube_pose_not_used_livello0_3[:, :3] += cube_not_used3
-        self._cuboid.write_root_pose_to_sim(cube_pose_used_livello0[:, :7], livello0)
-        self._cuboid1.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
-        self._cuboid2.write_root_pose_to_sim(cube_pose_not_used_livello0_2[:, :7], livello0)
-        self._cuboid3.write_root_pose_to_sim(cube_pose_not_used_livello0_3[:, :7], livello0)
-        #self._cuboid4.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
-        #self._cuboid5.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
+        cube_pose_livello0 = self._robot.data.default_root_state[livello0]
+        cube_pose_livello0[:, :3] += self._terrain.env_origins[livello0]
+        self._cuboid0.write_root_pose_to_sim(cube_pose_livello0[:, :7] + cube_used, livello0)
+        self._cuboid1.write_root_pose_to_sim(cube_pose_livello0[:, :7] + cube_not_used1, livello0)
+        self._cuboid2.write_root_pose_to_sim(cube_pose_livello0[:, :7] + cube_not_used2, livello0)
+        self._cuboid3.write_root_pose_to_sim(cube_pose_livello0[:, :7] + cube_not_used3, livello0)
+        self._cuboid4.write_root_pose_to_sim(cube_pose_livello0[:, :7] + cube_not_used4, livello0)
+        self._cuboid5.write_root_pose_to_sim(cube_pose_livello0[:, :7] + cube_not_used5, livello0)
         #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
         
         ## Livello 1
-        default_root_state_livello1 = self._robot.data.default_root_state[livello1]
-        default_root_state_livello1[:, :3] += self._terrain.env_origins[livello1]
-        cube_pose_used_livello1 = default_root_state_livello1.clone()
-        cube_pose_not_used_livello1 = default_root_state_livello1.clone()
-        cube_pose_not_used_livello1_2 = default_root_state_livello1.clone()
-        cube_pose_not_used_livello1_3 = default_root_state_livello1.clone()
-        cube_pose_used_livello1[:, :3] += cube_used
-        cube_pose_not_used_livello1[:, :3] += cube_not_used
-        cube_pose_not_used_livello1_2[:, :3] += cube_not_used2
-        cube_pose_not_used_livello1_3[:, :3] += cube_not_used3
-        self._cuboid.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
-        self._cuboid1.write_root_pose_to_sim(cube_pose_used_livello1[:, :7], livello1)
-        self._cuboid2.write_root_pose_to_sim(cube_pose_not_used_livello1_2[:, :7], livello1)
-        self._cuboid3.write_root_pose_to_sim(cube_pose_not_used_livello1_3[:, :7], livello1)
-        #self._cuboid4.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
-        #self._cuboid5.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
+        cube_pose_livello1 = self._robot.data.default_root_state[livello1]
+        cube_pose_livello1[:, :3] += self._terrain.env_origins[livello1]
+        self._cuboid0.write_root_pose_to_sim(cube_pose_livello1[:, :7] + cube_not_used1, livello1)
+        self._cuboid1.write_root_pose_to_sim(cube_pose_livello1[:, :7] + cube_used, livello1)
+        self._cuboid2.write_root_pose_to_sim(cube_pose_livello1[:, :7] + cube_not_used2, livello1)
+        self._cuboid3.write_root_pose_to_sim(cube_pose_livello1[:, :7] + cube_not_used3, livello1)
+        self._cuboid4.write_root_pose_to_sim(cube_pose_livello1[:, :7] + cube_not_used4, livello1)
+        self._cuboid5.write_root_pose_to_sim(cube_pose_livello1[:, :7] + cube_not_used5, livello1)
         #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
         
         # Livello 2
-        default_root_state_livello2 = self._robot.data.default_root_state[livello2]
-        default_root_state_livello2[:, :3] += self._terrain.env_origins[livello2]
-        cube_pose_used_livello2 = default_root_state_livello2.clone()
-        cube_pose_not_used_livello2 = default_root_state_livello2.clone()
-        cube_pose_not_used_livello2_2 = default_root_state_livello2.clone()
-        cube_pose_not_used_livello2_3 = default_root_state_livello2.clone()
-        cube_pose_used_livello2[:, :3] += cube_used
-        cube_pose_not_used_livello2[:, :3] += cube_not_used
-        cube_pose_not_used_livello2_2[:, :3] += cube_not_used2
-        cube_pose_not_used_livello2_3[:, :3] += cube_not_used3
-        self._cuboid.write_root_pose_to_sim(cube_pose_not_used_livello2[:, :7], livello2)
-        self._cuboid1.write_root_pose_to_sim(cube_pose_not_used_livello2_2[:, :7], livello2)
-        self._cuboid2.write_root_pose_to_sim(cube_pose_used_livello2[:, :7], livello2)
-        self._cuboid3.write_root_pose_to_sim(cube_pose_not_used_livello2_3[:, :7], livello2)
-        #self._cuboid4.write_root_pose_to_sim(cube_pose_not_used_livello2[:, :7], livello2)
+        cube_pose_livello2 = self._robot.data.default_root_state[livello2]
+        cube_pose_livello2[:, :3] += self._terrain.env_origins[livello2]
+        self._cuboid0.write_root_pose_to_sim(cube_pose_livello2[:, :7] + cube_not_used1, livello2)
+        self._cuboid1.write_root_pose_to_sim(cube_pose_livello2[:, :7] + cube_not_used2, livello2)
+        self._cuboid2.write_root_pose_to_sim(cube_pose_livello2[:, :7] + cube_used, livello2)
+        self._cuboid3.write_root_pose_to_sim(cube_pose_livello2[:, :7] + cube_not_used3, livello2)
+        self._cuboid4.write_root_pose_to_sim(cube_pose_livello2[:, :7] + cube_not_used4, livello2)
+        self._cuboid5.write_root_pose_to_sim(cube_pose_livello2[:, :7] + cube_not_used5, livello2)
         #self._cuboid5.write_root_pose_to_sim(cube_pose_not_used_livello2[:, :7], livello2)
         #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello2[:, :7], livello2)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello2[:, :7], livello2)
@@ -897,58 +889,42 @@ class AnymalCEnv(DirectRLEnv):
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello2[:, :7], livello2)
 
         # Livello 3
-        default_root_state_livello3 = self._robot.data.default_root_state[livello3]
-        default_root_state_livello3[:, :3] += self._terrain.env_origins[livello3]
-        cube_pose_used_livello3 = default_root_state_livello3.clone()
-        cube_pose_not_used_livello3 = default_root_state_livello3.clone()
-        cube_pose_not_used_livello3_2 = default_root_state_livello3.clone()
-        cube_pose_not_used_livello3_3 = default_root_state_livello3.clone()
-        cube_pose_used_livello3[:, :3] += cube_used
-        cube_pose_not_used_livello3[:, :3] += cube_not_used
-        cube_pose_not_used_livello3_2[:, :3] += cube_not_used2
-        cube_pose_not_used_livello3_3[:, :3] += cube_not_used3
-        self._cuboid.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
-        self._cuboid1.write_root_pose_to_sim(cube_pose_not_used_livello3_2[:, :7], livello3)
-        self._cuboid2.write_root_pose_to_sim(cube_pose_not_used_livello3_3[:, :7], livello3)
-        self._cuboid3.write_root_pose_to_sim(cube_pose_used_livello3[:, :7], livello3)
-        #self._cuboid4.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
-        #self._cuboid5.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
+        cube_pose_livello3 = self._robot.data.default_root_state[livello3]
+        cube_pose_livello3[:, :3] += self._terrain.env_origins[livello3]
+        self._cuboid0.write_root_pose_to_sim(cube_pose_livello3[:, :7] + cube_not_used1, livello3)
+        self._cuboid1.write_root_pose_to_sim(cube_pose_livello3[:, :7] + cube_not_used2, livello3)
+        self._cuboid2.write_root_pose_to_sim(cube_pose_livello3[:, :7] + cube_not_used3, livello3)
+        self._cuboid3.write_root_pose_to_sim(cube_pose_livello3[:, :7] + cube_used, livello3)
+        self._cuboid4.write_root_pose_to_sim(cube_pose_livello3[:, :7] + cube_not_used4, livello3)
+        self._cuboid5.write_root_pose_to_sim(cube_pose_livello3[:, :7] + cube_not_used5, livello3)
         #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
-#
-        ## Livello 4
-        #default_root_state_livello4 = self._robot.data.default_root_state[livello4]
-        #default_root_state_livello4[:, :3] += self._terrain.env_origins[livello4]
-        #cube_pose_used_livello4 = default_root_state_livello4.clone()
-        #cube_pose_not_used_livello4 = default_root_state_livello4.clone()
-        #cube_pose_used_livello4[:, :3] += cube_used
-        #cube_pose_not_used_livello4[:, :3] += cube_not_used
-        #self._cuboid.write_root_pose_to_sim(cube_pose_used_livello4[:  :7], livello4)
-        #self._cuboid1.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
-        #self._cuboid2.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
-        #self._cuboid3.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
-        #self._cuboid4.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
-        #self._cuboid5.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
+
+        # Livello 4
+        cube_pose_livello4 = self._robot.data.default_root_state[livello4]
+        cube_pose_livello4[:, :3] += self._terrain.env_origins[livello4]
+        self._cuboid0.write_root_pose_to_sim(cube_pose_livello4[:, :7] + cube_not_used1, livello4)
+        self._cuboid1.write_root_pose_to_sim(cube_pose_livello4[:, :7] + cube_not_used2, livello4)
+        self._cuboid2.write_root_pose_to_sim(cube_pose_livello4[:, :7] + cube_not_used3, livello4)
+        self._cuboid3.write_root_pose_to_sim(cube_pose_livello4[:, :7] + cube_not_used4, livello4)
+        self._cuboid4.write_root_pose_to_sim(cube_pose_livello4[:, :7] + cube_used, livello4)
+        self._cuboid5.write_root_pose_to_sim(cube_pose_livello4[:, :7] + cube_not_used5, livello4)
         #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
-        #
-        ## Livello 5
-        #default_root_state_livello5 = self._robot.data.default_root_state[livello5]
-        #default_root_state_livello5[:, :3] += self._terrain.env_origins[livello5]
-        #cube_pose_used_livello5 = default_root_state_livello5.clone()
-        #cube_pose_not_used_livello5 = default_root_state_livello5.clone()
-        #cube_pose_used_livello5[:, :3] += cube_used
-        #cube_pose_not_used_livello5[:, :3] += cube_not_used
-        #self._cuboid.write_root_pose_to_sim(cube_pose_used_livello5[:  :7], livello5)
-        #self._cuboid1.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
-        #self._cuboid2.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
-        #self._cuboid3.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
-        #self._cuboid4.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
-        #self._cuboid5.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
+        
+        # Livello 5
+        cube_pose_livello5 = self._robot.data.default_root_state[livello5]
+        cube_pose_livello5[:, :3] += self._terrain.env_origins[livello5]
+        self._cuboid0.write_root_pose_to_sim(cube_pose_livello5[:, :7] + cube_not_used1, livello5)
+        self._cuboid1.write_root_pose_to_sim(cube_pose_livello5[:, :7] + cube_not_used2, livello5)
+        self._cuboid2.write_root_pose_to_sim(cube_pose_livello5[:, :7] + cube_not_used3, livello5)
+        self._cuboid3.write_root_pose_to_sim(cube_pose_livello5[:, :7] + cube_not_used4, livello5)
+        self._cuboid4.write_root_pose_to_sim(cube_pose_livello5[:, :7] + cube_not_used5, livello5)
+        self._cuboid5.write_root_pose_to_sim(cube_pose_livello5[:, :7] + cube_used, livello5)
         #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)

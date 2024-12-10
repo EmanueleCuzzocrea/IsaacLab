@@ -177,7 +177,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     joint_accel_reward_scale = -2.5e-7
     joint_vel_reward_scale = 0.0 #-2.5e-7
     action_rate_reward_scale = -0.01
-    feet_air_time_reward_scale = 1.0
+    feet_air_time_reward_scale = 0.1
     undersired_contact_reward_scale = -1.0
     flat_orientation_reward_scale = -5.0*2
 
@@ -185,8 +185,8 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     force_variance = 0.0 #-0.000001
     force_acceleration = 0.0 #-0.001
     force_min_max = 0.0 #-0.001
-    track_force = -0.00001 #-0.00001
-    track_force2 = 2.0
+    track_force = 0.0 #-0.00001 #-0.00001
+    track_force2 = 0.5
     force_jerk = 0.0 #-0.00000001
     force_snap = 0.0
 
@@ -338,7 +338,7 @@ class AnymalCEnv(DirectRLEnv):
             (torch.arange(4096, device=self.device) <= 4095) & \
             (torch.arange(4096, device=self.device) % 2 == 0)
 
-        self._integrators[mask, 0] += 0.000003*(self._forces_reference[mask, 0] - self._forces[mask, 0])
+        self._integrators[mask, 0] += 0.00003*(self._forces_reference[mask, 0] - self._forces[mask, 0])
         self._proportional[mask, 0] = 0.0003*(self._forces_reference[mask, 0] - self._forces[mask, 0])
         self._commands[mask, 0] =  self._integrators[mask, 0] #+ self._proportional[mask, 0]
 
@@ -366,9 +366,9 @@ class AnymalCEnv(DirectRLEnv):
                     self._forces,
                     self._forces_reference,
                     self._P,
-                    self._state,
-                    self._phase,
-                    self._frequency,
+                    #self._state,
+                    #self._phase,
+                    #self._frequency,
                 )
                 if tensor is not None
             ],
@@ -561,9 +561,9 @@ class AnymalCEnv(DirectRLEnv):
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
 
-        mask_extra = self._extra_reward > 0
-        #reward[mask_extra] += 0.15
-        reward[mask_extra] *= 2.0
+        #mask_extra = self._extra_reward > 0
+        ##reward[mask_extra] += 0.15
+        #reward[mask_extra] *= 2.0
 
         #mask_force = self._forces.squeeze(dim=1) > 0.0
         #reward[mask_force] += 0.001
@@ -591,7 +591,7 @@ class AnymalCEnv(DirectRLEnv):
         self._previous_actions[env_ids] = 0.0
         
         # Sample new commands
-        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.5, 0.5)
+        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.3, 0.3)
 
         dispari = env_ids[(env_ids % 2 != 0) | (env_ids < 1000)]
         pari = env_ids[(env_ids % 2 == 0) & (env_ids > 999)]
@@ -607,7 +607,7 @@ class AnymalCEnv(DirectRLEnv):
         x_ = random.uniform(0.0, 0.3)
         y_ = random.uniform(-0.2, 0.2)
         self._commands[pari,0] = 0.0
-        self._commands[pari,1] = 0.0
+        self._commands[pari,1] = y_
 
         # Sample new force commands
         self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(10.0, 10.0)
