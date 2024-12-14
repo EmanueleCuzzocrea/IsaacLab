@@ -175,7 +175,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=2500,
+                compliant_contact_stiffness=2000,
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
@@ -197,7 +197,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=5000,
+                compliant_contact_stiffness=3000,
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
@@ -219,7 +219,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=6500,
+                compliant_contact_stiffness=4000,
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
@@ -241,7 +241,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=8000,
+                compliant_contact_stiffness=5000,
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
@@ -263,7 +263,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=10000,
+                compliant_contact_stiffness=6000,
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
@@ -278,25 +278,27 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
         init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 40.0)),
     )
 
-    #cuboid_cfg6: RigidObjectCfg = RigidObjectCfg(
-    #    prim_path=f"/World/envs/env_.*/Cuboid6",
-    #    spawn=sim_utils.CuboidCfg(
-    #        size=(0.5, 4.0, 2.0),
-    #        physics_material=sim_utils.RigidBodyMaterialCfg(
-    #            static_friction=0.5,
-    #            dynamic_friction=0.5,
-    #            compliant_contact_stiffness=7000,
-    #            restitution=0.0,
-    #        ),
-    #        rigid_props=sim_utils.RigidBodyPropertiesCfg(
-    #            disable_gravity=True,
-    #        ),
-    #        mass_props=sim_utils.MassPropertiesCfg(mass=1000.0),
-    #        collision_props=sim_utils.CollisionPropertiesCfg(),
-    #        visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9020, 0.9020, 0.9804), metallic=0.2),
-    #    ),
-    #    init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 10.0)),
-    #)
+    cuboid_cfg6: RigidObjectCfg = RigidObjectCfg(
+        prim_path=f"/World/envs/env_.*/Cuboid6",
+        spawn=sim_utils.CuboidCfg(
+            size=(0.5, 2.5, 1.0),
+            physics_material=sim_utils.RigidBodyMaterialCfg(
+                static_friction=0.5,
+                dynamic_friction=0.5,
+                compliant_contact_stiffness=7000,
+                restitution=0.0,
+            ),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                max_linear_velocity=0.0,
+                max_angular_velocity=0.0,
+                disable_gravity=True,
+            ),
+            mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
+            collision_props=sim_utils.CollisionPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.9020, 0.9020, 0.9804), metallic=0.2),
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 45.0)),
+    )
 
     #cuboid_cfg7: RigidObjectCfg = RigidObjectCfg(
     #    prim_path=f"/World/envs/env_.*/Cuboid7",
@@ -372,7 +374,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     undersired_contact_reward_scale = -1.0
     flat_orientation_reward_scale = -5.0*2
 
-    track_yaw = 1.0*2
+    track_yaw = 1.0
     force_variance = 0.0 #-0.000001
     force_acceleration = 0.0 #-0.001
     force_min_max = 0.0 #-0.001
@@ -380,6 +382,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     track_force2 = 2.0
     force_jerk = 0.0 #-0.00000001
     force_snap = 0.0
+    joint_deviation = -0.5
 
 
 
@@ -470,6 +473,7 @@ class AnymalCEnv(DirectRLEnv):
                 "force_tracking2",
                 "force_jerk",
                 "force_snap",
+                "joint_deviation",
             ]
         }
         # Get specific body indices
@@ -522,7 +526,7 @@ class AnymalCEnv(DirectRLEnv):
         self._cuboid3 = RigidObject(self.cfg.cuboid_cfg3)
         self._cuboid4 = RigidObject(self.cfg.cuboid_cfg4)
         self._cuboid5 = RigidObject(self.cfg.cuboid_cfg5)
-        #self._cuboid6 = RigidObject(self.cfg.cuboid_cfg6)
+        self._cuboid6 = RigidObject(self.cfg.cuboid_cfg6)
         #self._cuboid7 = RigidObject(self.cfg.cuboid_cfg7)
         #self._cuboid8 = RigidObject(self.cfg.cuboid_cfg8)
         #self._cuboid9 = RigidObject(self.cfg.cuboid_cfg9)
@@ -536,12 +540,8 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        mask = (torch.arange(4096, device=self.device) >= 1000) & \
-            (torch.arange(4096, device=self.device) <= 4095) & \
-            (torch.arange(4096, device=self.device) % 2 == 0)
-
-        self._integrators[mask, 0] += 0.0003*(self._forces_reference[mask, 0] - self._forces[mask, 0])
-        self._commands[mask, 0] = self._integrators[mask, 0]
+        self._integrators[:, 0] += 0.0003*(self._forces_reference[:, 0] - self._forces[:, 0])
+        self._commands[:, 0] = self._integrators[:, 0]
 
         mask_force__ = self._forces.squeeze(dim=1) > 0.0
         self._commands[mask_force__, 0] *= 0.0
@@ -709,6 +709,10 @@ class AnymalCEnv(DirectRLEnv):
         self._forces_data[:, 2] = force_min
         self._forces_data[:, 3] = force_max
 
+        # joint deviation
+        deviation = self._robot.data.joint_pos - self._robot.data.default_joint_pos
+        joint_deviation = torch.sum(torch.abs(deviation), dim=1)
+
         rewards = {
             "track_lin_vel_x_exp": lin_vel_error_mapped_x * self.cfg.lin_vel_reward_scale_x * self.step_dt,
             "track_lin_vel_y_exp": lin_vel_error_mapped_y * self.cfg.lin_vel_reward_scale_y * self.step_dt,
@@ -729,6 +733,7 @@ class AnymalCEnv(DirectRLEnv):
             "force_tracking2": force_error_mapped * self.cfg.track_force2 * self.step_dt,
             "force_jerk": force_jerk * self.cfg.force_jerk * self.step_dt,
             "force_snap": force_snap * self.cfg.force_snap * self.step_dt,
+            "joint_deviation": joint_deviation * self.cfg.joint_deviation * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
 
@@ -760,23 +765,13 @@ class AnymalCEnv(DirectRLEnv):
         self._previous_actions[env_ids] = 0.0
         
         # Sample new commands
-        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
-
-        dispari = env_ids[(env_ids % 2 != 0) | (env_ids < 1000)]
-        pari = env_ids[(env_ids % 2 == 0) & (env_ids > 999)]
-
-        yaw_ = random.uniform(-3.14, 3.14)
-        self._commands[dispari, 2] = yaw_
-        numero = random.randint(1, 10)
-        if numero == 5:
-            self._commands[dispari,0] *= 0.0
-            self._commands[dispari,1] *= 0.0
+        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(0.0, 0.0)
     
-        self._commands[pari, 2] = 0.0
+        self._commands[env_ids, 2] = 0.0
         x_ = random.uniform(0.0, 0.3)
         y_ = random.uniform(-0.2, 0.2)
-        self._commands[pari,0] = 0.0
-        self._commands[pari,1] = 0.0
+        self._commands[env_ids,0] = 0.0
+        self._commands[env_ids,1] = 0.0
 
         # Sample new force commands
         self._integrators[env_ids] = 0.0
@@ -787,8 +782,8 @@ class AnymalCEnv(DirectRLEnv):
         self._P[env_ids, :] = 0
         self._state[env_ids, 0] = 0
         self._phase[env_ids, 0] = 0
-        self._frequency[dispari, 0] = random.randint(2, 4)
-        self._frequency[pari, 0] = random.randint(2, 4)
+        self._frequency[env_ids, 0] = random.randint(2, 4)
+        self._frequency[env_ids, 0] = random.randint(2, 4)
 
       
         # Reset robot state
@@ -811,7 +806,7 @@ class AnymalCEnv(DirectRLEnv):
         mask_level_down = (self._forces_buffer.min(dim=1).values < 1.0) | (self._forces_buffer.max(dim=1).values > (self._forces_reference[:, 0] + 10))
         selected_mask_down = mask_level_down[env_ids]
         self._level[env_ids[selected_mask_down], 0] -= 1
-        self._level[:, 0].clamp_(min=0, max=5)
+        self._level[:, 0].clamp_(min=0, max=6)
 
         cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
         cube_not_used1 = torch.tensor([1.15, 0.0, 10.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
@@ -819,24 +814,34 @@ class AnymalCEnv(DirectRLEnv):
         cube_not_used3 = torch.tensor([1.15, 0.0, 25.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
         cube_not_used4 = torch.tensor([1.15, 0.0, 30.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
         cube_not_used5 = torch.tensor([1.15, 0.0, 35.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        cube_not_used6 = torch.tensor([1.15, 0.0, 40.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
 
-        livello0 = env_ids[(self._level[env_ids, 0] == 0) & (env_ids % 2 == 0) & (env_ids > 999)]
-        livello1 = env_ids[(self._level[env_ids, 0] == 1) & (env_ids % 2 == 0) & (env_ids > 999)]
-        livello2 = env_ids[(self._level[env_ids, 0] == 2) & (env_ids % 2 == 0) & (env_ids > 999)]
-        livello3 = env_ids[(self._level[env_ids, 0] == 3) & (env_ids % 2 == 0) & (env_ids > 999)]
-        livello4 = env_ids[(self._level[env_ids, 0] == 4) & (env_ids % 2 == 0) & (env_ids > 999)]
-        livello5 = env_ids[(self._level[env_ids, 0] == 5) & (env_ids % 2 == 0) & (env_ids > 999)]
-        livello6 = env_ids[(self._level[env_ids, 0] == 6) & (env_ids % 2 == 0) & (env_ids > 999)]
-        livello7 = env_ids[(self._level[env_ids, 0] == 7) & (env_ids % 2 == 0) & (env_ids > 999)]
-        livello8 = env_ids[(self._level[env_ids, 0] == 8) & (env_ids % 2 == 0) & (env_ids > 999)]
-        livello9 = env_ids[(self._level[env_ids, 0] == 9) & (env_ids % 2 == 0) & (env_ids > 999)]
+        livello0 = env_ids[(self._level[env_ids, 0] == 0)]
+        livello1 = env_ids[(self._level[env_ids, 0] == 1)]
+        livello2 = env_ids[(self._level[env_ids, 0] == 2)]
+        livello3 = env_ids[(self._level[env_ids, 0] == 3)]
+        livello4 = env_ids[(self._level[env_ids, 0] == 4)]
+        livello5 = env_ids[(self._level[env_ids, 0] == 5)]
+        livello6 = env_ids[(self._level[env_ids, 0] == 6)]
+        livello7 = env_ids[(self._level[env_ids, 0] == 7)]
+        livello8 = env_ids[(self._level[env_ids, 0] == 8)]
+        livello9 = env_ids[(self._level[env_ids, 0] == 9)]
 
-        self._forces_reference[livello0] = torch.zeros_like(self._forces_reference[livello0]).uniform_(6.0, 8.0)
-        self._forces_reference[livello1] = torch.zeros_like(self._forces_reference[livello1]).uniform_(7.0, 10.0)
-        self._forces_reference[livello2] = torch.zeros_like(self._forces_reference[livello2]).uniform_(10.0, 12.0)
-        self._forces_reference[livello3] = torch.zeros_like(self._forces_reference[livello3]).uniform_(12.0, 15.0)
-        self._forces_reference[livello4] = torch.zeros_like(self._forces_reference[livello4]).uniform_(15.0, 20.0)
-        self._forces_reference[livello5] = torch.zeros_like(self._forces_reference[livello5]).uniform_(20.0, 20.0)
+        #self._forces_reference[livello0] = torch.zeros_like(self._forces_reference[livello0]).uniform_(10.0, 12.0)
+        #self._forces_reference[livello1] = torch.zeros_like(self._forces_reference[livello1]).uniform_(11.0, 15.0)
+        #self._forces_reference[livello2] = torch.zeros_like(self._forces_reference[livello2]).uniform_(15.0, 18.0)
+        #self._forces_reference[livello3] = torch.zeros_like(self._forces_reference[livello3]).uniform_(18.0, 20.0)
+        #self._forces_reference[livello4] = torch.zeros_like(self._forces_reference[livello4]).uniform_(20.0, 20.0)
+        #self._forces_reference[livello5] = torch.zeros_like(self._forces_reference[livello5]).uniform_(20.0, 20.0)
+        #self._forces_reference[livello6] = torch.zeros_like(self._forces_reference[livello5]).uniform_(20.0, 20.0)
+
+        self._forces_reference[livello0] = torch.zeros_like(self._forces_reference[livello0]).uniform_(10.0, 12.0)
+        self._forces_reference[livello1] = torch.zeros_like(self._forces_reference[livello1]).uniform_(11.0, 13.0)
+        self._forces_reference[livello2] = torch.zeros_like(self._forces_reference[livello2]).uniform_(12.0, 14.0)
+        self._forces_reference[livello3] = torch.zeros_like(self._forces_reference[livello3]).uniform_(13.0, 15.0)
+        self._forces_reference[livello4] = torch.zeros_like(self._forces_reference[livello4]).uniform_(14.0, 16.0)
+        self._forces_reference[livello5] = torch.zeros_like(self._forces_reference[livello5]).uniform_(15.0, 18.0)
+        self._forces_reference[livello6] = torch.zeros_like(self._forces_reference[livello6]).uniform_(20.0, 20.0)
 
         # Livello 0
         cube_pose_livello0 = self._robot.data.default_root_state[livello0]
@@ -847,7 +852,7 @@ class AnymalCEnv(DirectRLEnv):
         self._cuboid3.write_root_pose_to_sim(cube_pose_livello0[:, :7] + cube_not_used3, livello0)
         self._cuboid4.write_root_pose_to_sim(cube_pose_livello0[:, :7] + cube_not_used4, livello0)
         self._cuboid5.write_root_pose_to_sim(cube_pose_livello0[:, :7] + cube_not_used5, livello0)
-        #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
+        self._cuboid6.write_root_pose_to_sim(cube_pose_livello0[:, :7] + cube_not_used6, livello0)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello0[:, :7], livello0)
@@ -861,7 +866,7 @@ class AnymalCEnv(DirectRLEnv):
         self._cuboid3.write_root_pose_to_sim(cube_pose_livello1[:, :7] + cube_not_used3, livello1)
         self._cuboid4.write_root_pose_to_sim(cube_pose_livello1[:, :7] + cube_not_used4, livello1)
         self._cuboid5.write_root_pose_to_sim(cube_pose_livello1[:, :7] + cube_not_used5, livello1)
-        #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
+        self._cuboid6.write_root_pose_to_sim(cube_pose_livello1[:, :7] + cube_not_used6, livello1)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello1[:, :7], livello1)
@@ -875,7 +880,7 @@ class AnymalCEnv(DirectRLEnv):
         self._cuboid3.write_root_pose_to_sim(cube_pose_livello2[:, :7] + cube_not_used3, livello2)
         self._cuboid4.write_root_pose_to_sim(cube_pose_livello2[:, :7] + cube_not_used4, livello2)
         self._cuboid5.write_root_pose_to_sim(cube_pose_livello2[:, :7] + cube_not_used5, livello2)
-        #self._cuboid5.write_root_pose_to_sim(cube_pose_not_used_livello2[:, :7], livello2)
+        self._cuboid6.write_root_pose_to_sim(cube_pose_livello2[:, :7] + cube_not_used6, livello2)
         #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello2[:, :7], livello2)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello2[:, :7], livello2)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello2[:, :7], livello2)
@@ -890,7 +895,7 @@ class AnymalCEnv(DirectRLEnv):
         self._cuboid3.write_root_pose_to_sim(cube_pose_livello3[:, :7] + cube_used, livello3)
         self._cuboid4.write_root_pose_to_sim(cube_pose_livello3[:, :7] + cube_not_used4, livello3)
         self._cuboid5.write_root_pose_to_sim(cube_pose_livello3[:, :7] + cube_not_used5, livello3)
-        #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
+        self._cuboid6.write_root_pose_to_sim(cube_pose_livello3[:, :7] + cube_not_used6, livello3)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello3[:, :7], livello3)
@@ -904,7 +909,7 @@ class AnymalCEnv(DirectRLEnv):
         self._cuboid3.write_root_pose_to_sim(cube_pose_livello4[:, :7] + cube_not_used4, livello4)
         self._cuboid4.write_root_pose_to_sim(cube_pose_livello4[:, :7] + cube_used, livello4)
         self._cuboid5.write_root_pose_to_sim(cube_pose_livello4[:, :7] + cube_not_used5, livello4)
-        #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
+        self._cuboid6.write_root_pose_to_sim(cube_pose_livello4[:, :7] + cube_not_used6, livello4)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello4[:, :7], livello4)
@@ -918,25 +923,21 @@ class AnymalCEnv(DirectRLEnv):
         self._cuboid3.write_root_pose_to_sim(cube_pose_livello5[:, :7] + cube_not_used4, livello5)
         self._cuboid4.write_root_pose_to_sim(cube_pose_livello5[:, :7] + cube_not_used5, livello5)
         self._cuboid5.write_root_pose_to_sim(cube_pose_livello5[:, :7] + cube_used, livello5)
-        #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
+        self._cuboid6.write_root_pose_to_sim(cube_pose_livello5[:, :7] + cube_not_used6, livello5)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello5[:, :7], livello5)
-#
-        ## Livello 6
-        #default_root_state_livello6 = self._robot.data.default_root_state[livello6]
-        #default_root_state_livello6[:, :3] += self._terrain.env_origins[livello6]
-        #cube_pose_used_livello6 = default_root_state_livello6.clone()
-        #cube_pose_not_used_livello6 = default_root_state_livello6.clone()
-        #cube_pose_used_livello6[:, :3] += cube_used
-        #cube_pose_not_used_livello6[:, :3] += cube_not_used
-        #self._cuboid.write_root_pose_to_sim(cube_pose_used_livello6[:  :7], livello6)
-        #self._cuboid1.write_root_pose_to_sim(cube_pose_not_used_livello6[:, :7], livello6)
-        #self._cuboid2.write_root_pose_to_sim(cube_pose_not_used_livello6[:, :7], livello6)
-        #self._cuboid3.write_root_pose_to_sim(cube_pose_not_used_livello6[:, :7], livello6)
-        #self._cuboid4.write_root_pose_to_sim(cube_pose_not_used_livello6[:, :7], livello6)
-        #self._cuboid5.write_root_pose_to_sim(cube_pose_not_used_livello6[:, :7], livello6)
-        #self._cuboid6.write_root_pose_to_sim(cube_pose_not_used_livello6[:, :7], livello6)
+
+        # Livello 6
+        cube_pose_livello6 = self._robot.data.default_root_state[livello6]
+        cube_pose_livello6[:, :3] += self._terrain.env_origins[livello6]
+        self._cuboid0.write_root_pose_to_sim(cube_pose_livello6[:, :7] + cube_not_used1, livello6)
+        self._cuboid1.write_root_pose_to_sim(cube_pose_livello6[:, :7] + cube_not_used2, livello6)
+        self._cuboid2.write_root_pose_to_sim(cube_pose_livello6[:, :7] + cube_not_used3, livello6)
+        self._cuboid3.write_root_pose_to_sim(cube_pose_livello6[:, :7] + cube_not_used4, livello6)
+        self._cuboid4.write_root_pose_to_sim(cube_pose_livello6[:, :7] + cube_not_used5, livello6)
+        self._cuboid5.write_root_pose_to_sim(cube_pose_livello6[:, :7] + cube_not_used6, livello6)
+        self._cuboid6.write_root_pose_to_sim(cube_pose_livello6[:, :7] + cube_used, livello6)
         #self._cuboid7.write_root_pose_to_sim(cube_pose_not_used_livello6[:, :7], livello6)
         #self._cuboid8.write_root_pose_to_sim(cube_pose_not_used_livello6[:, :7], livello6)
         #self._cuboid9.write_root_pose_to_sim(cube_pose_not_used_livello6[:, :7], livello6)

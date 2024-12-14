@@ -267,7 +267,6 @@ class AnymalCEnv(DirectRLEnv):
         self._P = torch.zeros(self.num_envs, 4, device=self.device)
         self._state = torch.zeros(self.num_envs, 1, device=self.device)
         self._phase = torch.zeros(self.num_envs, 1, device=self.device)
-        self._go = torch.zeros(self.num_envs, 1, device=self.device)
         self._frequency = torch.zeros(self.num_envs, 1, device=self.device)
         self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
         self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
@@ -368,6 +367,7 @@ class AnymalCEnv(DirectRLEnv):
         else:
             self._commands[:, 0] = self.a
         self._commands[:, 1] = 0.0
+        self._commands[:, 2] = 0.0
         
         self._previous_actions = self._actions.clone()
         height_data = None
@@ -391,7 +391,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._P,
                     self._state,
                     self._phase,
-                    self._frequency,
+                    #self._frequency,
                 )
                 if tensor is not None
             ],
@@ -452,30 +452,22 @@ class AnymalCEnv(DirectRLEnv):
         #mask_phase1 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 1).all(dim=1) & (self._phase[:, 0] < 16)
         #mask_phase2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 3).all(dim=1) & (self._phase[:, 0] < 16)
         #mask_phase = mask_phase1 | mask_phase2
-        mask_phase = (self._phase[:, 0] < 40)
+        mask_phase = (self._phase[:, 0] < 16)
         self._phase[:, 0][mask_phase] += 1
 
-        self._go[:, 0] = 0
-        maschera1_ = (self._phase > 3).all(dim=1) & (self._state == 0).all(dim=1)
-        maschera2_ = (self._phase > self._frequency).all(dim=1) & (self._state == 1).all(dim=1)
-        maschera3_ = (self._phase > 3).all(dim=1) & (self._state == 2).all(dim=1)
-        maschera4_ = (self._phase > self._frequency).all(dim=1) & (self._state == 3).all(dim=1)
-        maschera_ = maschera1_ | maschera2_ | maschera3_ | maschera4_
-        self._go[:, 0][maschera_] = 1
-
-        maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._phase > self._frequency).all(dim=1) & (self._state == 0).all(dim=1)
+        maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._phase > 0).all(dim=1) & (self._state == 0).all(dim=1)
         self._state[:, 0][maschera1] = 1
         self._extra_reward[maschera1] = 2
         self._phase[:, 0][maschera1] = 0
-        maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._phase > self._frequency).all(dim=1) & (self._state == 1).all(dim=1)
+        maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._phase > 5).all(dim=1) & (self._state == 1).all(dim=1)
         self._state[:, 0][maschera2] = 2
         self._extra_reward[maschera2] = 2
         self._phase[:, 0][maschera2] = 0
-        maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._phase > self._frequency).all(dim=1) & (self._state == 2).all(dim=1)
+        maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._phase > 0).all(dim=1) & (self._state == 2).all(dim=1)
         self._state[:, 0][maschera3] = 3
         self._extra_reward[maschera3] = 2
         self._phase[:, 0][maschera3] = 0
-        maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._phase > self._frequency).all(dim=1) & (self._state == 3).all(dim=1)
+        maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._phase > 5).all(dim=1) & (self._state == 3).all(dim=1)
         self._state[:, 0][maschera4] = 0
         self._extra_reward[maschera4] = 2
         self._phase[:, 0][maschera4] = 0
@@ -642,7 +634,6 @@ class AnymalCEnv(DirectRLEnv):
         self._P[env_ids, :] = 0
         self._state[env_ids, 0] = 0
         self._phase[env_ids, 0] = 0
-        self._go[env_ids, 0] = 0
         self._frequency[env_ids, 0] = 3
       
         # Reset robot state
