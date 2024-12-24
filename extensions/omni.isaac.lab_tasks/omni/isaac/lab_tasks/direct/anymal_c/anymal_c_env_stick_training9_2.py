@@ -31,8 +31,8 @@ class EventCfg:
         mode="startup",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names=".*"),
-            "static_friction_range": (0.6, 0.8),
-            "dynamic_friction_range": (0.4, 0.6),
+            "static_friction_range": (0.8, 0.8),
+            "dynamic_friction_range": (0.6, 0.6),
             "restitution_range": (0.0, 0.0),
             "num_buckets": 64,
         },
@@ -59,45 +59,11 @@ class EventCfg:
         },
     )
 
-    #reset_base = EventTerm(
-    #    func=mdp.reset_root_state_uniform,
-    #    mode="reset",
-    #    params={
-    #        "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-    #        "velocity_range": {
-    #            "x": (-0.5, 0.5),
-    #            "y": (-0.5, 0.5),
-    #            "z": (-0.5, 0.5),
-    #            "roll": (-0.5, 0.5),
-    #            "pitch": (-0.5, 0.5),
-    #            "yaw": (-0.5, 0.5),
-    #        },
-    #    },
-    #)
-
-    #velocity_base = EventTerm(
-    #    func=mdp.push_by_setting_velocity,
-    #    mode="reset",
-    #    is_global_time=True,
-    #    interval_range_s=(0.0,0.0),
-    #    params={
-    #        "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #        "velocity_range": {
-    #            #"x": (0.0, 0.0),
-    #            #"y": (0., 0.0),
-    #            #"z": (-0.0, 0.0),
-    #            #"roll": (-0.0, 0.0),
-    #            #"pitch": (-0.0, 0.0),
-    #            #"yaw": (-0.0, 0.0),
-    #        },
-    #    },
-    #)
-
 
 @configclass
 class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     # env
-    episode_length_s = 20.0
+    episode_length_s = 10.0
     decimation = 4
     action_scale = 0.5
     action_space = 12
@@ -148,46 +114,63 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     cuboid_cfg: RigidObjectCfg = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Cuboid",
         spawn=sim_utils.CuboidCfg(
-            size=(0.5, 10.0, 1.0),
+            size=(0.5, 2.5, 1.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
                 compliant_contact_stiffness=1000,
-                #compliant_contact_damping=10,
-                restitution=0.0,
+                compliant_contact_damping=250,
+                #restitution=0.0,
             ),
-            #rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            #    disable_gravity=True,
-            #),
-            #mass_props=sim_utils.MassPropertiesCfg(mass=1000000000.0),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                max_linear_velocity=0.0,
+                max_angular_velocity=0.0,
+                disable_gravity=True,
+            ),
+            mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 0.5)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 0.6)),
     )
- 
+
 
     # reward scales
-    lin_vel_reward_scale_x = 1.0*3
-    lin_vel_reward_scale_y = 1.0*3
-    z_vel_reward_scale = -2.0*3
+    lin_vel_reward_scale_x = 1.0
+    lin_vel_reward_scale_y = 1.0
+    z_vel_reward_scale = -2.0
     ang_vel_reward_scale = -0.05*3
     joint_torque_reward_scale = -2.5e-5
     joint_accel_reward_scale = -2.5e-7
     joint_vel_reward_scale = 0.0 #-2.5e-7
     action_rate_reward_scale = -0.01
-    feet_air_time_reward_scale = 1.0
+    feet_air_time_reward_scale = 0.0
     undersired_contact_reward_scale = -1.0
     flat_orientation_reward_scale = -5.0*2
 
     track_yaw = 1.0
-    force_variance = 0.0 #-0.000001
     force_acceleration = 0.0 #-0.001
-    force_min_max = 0.0 #-0.001
     track_force = -0.00001 #-0.00001
     track_force2 = 2.0
-    force_jerk = 0.0 #-0.00000001
-    force_snap = 0.0
+    joint_deviation = -0.75
+
+    ## reward scales
+    #lin_vel_reward_scale_x = 1.0*3
+    #lin_vel_reward_scale_y = 1.0*3
+    #z_vel_reward_scale = -2.0
+    #ang_vel_reward_scale = -0.05*3
+    #joint_torque_reward_scale = -2.5e-5
+    #joint_accel_reward_scale = -2.5e-7
+    #joint_vel_reward_scale = 0.0 #-2.5e-7
+    #action_rate_reward_scale = -0.01
+    #feet_air_time_reward_scale = 0.0
+    #undersired_contact_reward_scale = -1.0
+    #flat_orientation_reward_scale = -5.0*2
+#
+    #track_yaw = 1.0
+    #track_force = -0.00001 #-0.00001
+    #track_force2 = 2.0
+    #joint_deviation = -1.0
 
 
 
@@ -241,21 +224,17 @@ class AnymalCEnv(DirectRLEnv):
 
         # X/Y linear velocity and yaw angular velocity commands
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
-        self._commands_b = torch.zeros(self.num_envs, 3, device=self.device)
 
         # Reward machines parameters
         self._P = torch.zeros(self.num_envs, 4, device=self.device)
         self._state = torch.zeros(self.num_envs, 1, device=self.device)
         self._phase = torch.zeros(self.num_envs, 1, device=self.device)
-        self._go = torch.zeros(self.num_envs, 1, device=self.device)
         self._frequency = torch.zeros(self.num_envs, 1, device=self.device)
         self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
         self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
         self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
         self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
         
-        
-
         # Logging
         self._episode_sums = {
             key: torch.zeros(self.num_envs, dtype=torch.float, device=self.device)
@@ -272,35 +251,33 @@ class AnymalCEnv(DirectRLEnv):
                 "feet_air_time",
                 "undesired_contacts",
                 "flat_orientation_l2",
-                "force_variance",
-                "force_acceleration",
-                "force_min_max",
                 "force_tracking",
                 "force_tracking2",
-                "force_jerk",
-                "force_snap",
+                "joint_deviation",
             ]
         }
+
         # Get specific body indices
         self._base_id, _ = self._contact_sensor.find_bodies("base")
         self._feet_ids, _ = self._contact_sensor.find_bodies(".*FOOT")
         self._undesired_contact_body_ids, _ = self._contact_sensor.find_bodies(".*THIGH")
         self._interaction_ids, _ = self._contact_sensor.find_bodies("interaction")
 
-        self._forces = torch.zeros(self.num_envs, 1, device=self.device)
         self.yaw = torch.zeros(self.num_envs, 1, device=self.device)
-
-        self._forces_buffer = torch.zeros(self.num_envs, 10, device=self.device)
-        self._forces_filtered = torch.zeros(self.num_envs, 1, device=self.device)
-        self._forces_data = torch.zeros(self.num_envs, 4, device=self.device)
-
+        
         self._forces_reference = torch.zeros(self.num_envs, 1, device=self.device)
-        self._integrators = torch.zeros(self.num_envs, 1, device=self.device)
-        self._proportional = torch.zeros(self.num_envs, 1, device=self.device)
+        self._forces = torch.zeros(self.num_envs, 1, device=self.device)
+        self._forces_buffer = torch.zeros(self.num_envs, 125, device=self.device)
 
-        self._forces_metric = torch.zeros(self.num_envs, 1, device=self.device)
-        self._mae = torch.zeros(self.num_envs, 1, device=self.device)
-        self._iteration = torch.zeros(self.num_envs, 1, device=self.device)
+        self._integrators = torch.zeros(self.num_envs, 1, device=self.device)
+
+        self._level = torch.zeros(self.num_envs, 1, device=self.device)
+        self.count = 0.0
+        self.count_int = 0
+        self.percentage_at_max_level = 0.0
+        self.max_level_unlocked = 1
+        self.unlock_threshold = 0.8
+        self.boundary = 5.0
 
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
@@ -333,8 +310,9 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        self._integrators[:, 0] += 0.000003*(self._forces_reference[:, 0] - self._forces[:, 0])
-        self._commands[:, 0] =  self._integrators[:, 0]
+        #self._integrators[:, 0] += 0.0004*(self._forces_reference[:, 0] - self._forces[:, 0])
+        #self._commands[:, 0] = self._integrators[:, 0]
+        self._commands[:, 0] = 0.2
 
         mask_force__ = self._forces.squeeze(dim=1) > 0.0
         self._commands[mask_force__, 0] *= 0.0
@@ -361,7 +339,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._forces_reference,
                     self._P,
                     self._state,
-                    self._go,
+                    self._phase,
                     #self._frequency,
                 )
                 if tensor is not None
@@ -406,8 +384,12 @@ class AnymalCEnv(DirectRLEnv):
         action_rate = torch.sum(torch.square(self._actions - self._previous_actions), dim=1)
         # feet air time
         first_contact = self._contact_sensor.compute_first_contact(self.step_dt)[:, self._feet_ids]
-        first_air = self._contact_sensor.compute_first_air(self.step_dt)[:, self._feet_ids]
+        last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
+        air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * (
+            torch.norm(self._commands[:, :2], dim=1) > 0.1
+        )
 
+        # reward machine
         current_contact_time = self._contact_sensor.data.current_contact_time[:, self._feet_ids]
         current_air_time = self._contact_sensor.data.current_air_time[:, self._feet_ids]
         mask_contact = current_contact_time > 0.0
@@ -415,44 +397,28 @@ class AnymalCEnv(DirectRLEnv):
         self._P[:, :][mask_contact] = 1
         self._P[:, :][mask_air] = 0
         
-        # reward machine
         self._extra_reward = torch.zeros(self.num_envs, 1, device=self.device)
-        #mask_phase1 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 1).all(dim=1) & (self._phase[:, 0] < 16)
-        #mask_phase2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 3).all(dim=1) & (self._phase[:, 0] < 16)
-        #mask_phase = mask_phase1 | mask_phase2
-        mask_phase = (self._phase[:, 0] < 40)
+        mask_phase = (self._phase[:, 0] < 16)
         self._phase[:, 0][mask_phase] += 1
 
-        self._go[:, 0] = 0
-        maschera1_ = (self._phase > 3).all(dim=1) & (self._state == 0).all(dim=1)
-        maschera2_ = (self._phase > self._frequency).all(dim=1) & (self._state == 1).all(dim=1)
-        maschera3_ = (self._phase > 3).all(dim=1) & (self._state == 2).all(dim=1)
-        maschera4_ = (self._phase > self._frequency).all(dim=1) & (self._state == 3).all(dim=1)
-        maschera_ = maschera1_ | maschera2_ | maschera3_ | maschera4_
-        self._go[:, 0][maschera_] = 1
-
-        maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._phase > 3).all(dim=1) & (self._state == 0).all(dim=1)
+        maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._phase > 0).all(dim=1) & (self._state == 0).all(dim=1)
         self._state[:, 0][maschera1] = 1
         self._extra_reward[maschera1] = 2
         self._phase[:, 0][maschera1] = 0
-        maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._phase > self._frequency).all(dim=1) & (self._state == 1).all(dim=1)
+        maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._phase > 5).all(dim=1) & (self._state == 1).all(dim=1)
         self._state[:, 0][maschera2] = 2
         self._extra_reward[maschera2] = 2
         self._phase[:, 0][maschera2] = 0
-        maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._phase > 3).all(dim=1) & (self._state == 2).all(dim=1)
+        maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._phase > 0).all(dim=1) & (self._state == 2).all(dim=1)
         self._state[:, 0][maschera3] = 3
         self._extra_reward[maschera3] = 2
         self._phase[:, 0][maschera3] = 0
-        maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._phase > self._frequency).all(dim=1) & (self._state == 3).all(dim=1)
+        maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._phase > 5).all(dim=1) & (self._state == 3).all(dim=1)
         self._state[:, 0][maschera4] = 0
         self._extra_reward[maschera4] = 2
         self._phase[:, 0][maschera4] = 0
         self._extra_reward = self._extra_reward.squeeze()
 
-        last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
-        air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * (
-            torch.norm(self._commands[:, :2], dim=1) > 0.1
-        )
         
         # undersired contacts
         net_contact_forces = self._contact_sensor.data.net_forces_w_history
@@ -470,67 +436,17 @@ class AnymalCEnv(DirectRLEnv):
         z_component *= torch.cos(self.yaw[:, 0])
         self._forces[:,0] = z_component
 
-        ## mae
-        #self._forces_metric[:, 0] += torch.abs(self._forces_reference[:, 0] - self._forces[:, 0])
-        #self._iteration[:, 0] += 1
-
         # interaction force buffer
         self._forces_buffer[:, :-1] = self._forces_buffer[:, 1:].clone()
         self._forces_buffer[:, -1] = self._forces[:,0].squeeze()
 
-        ## buffer normalized
-        #mean_val =  self._forces_buffer.mean(dim=1, keepdim=True)
-        #std_val =  self._forces_buffer.std(dim=1, keepdim=True)
-        #mask = (std_val > 0).squeeze()
-        #self._forces_buffer_normalized[mask, :] = (self._forces_buffer[mask, :] - mean_val[mask, :]) / (std_val[mask, :] + 1e-8)
-
-        ## Butter filter
-        #data_np = self._forces_buffer.cpu().numpy()
-        #fs = 50.0
-        #cutoff = 0.5
-        #order = 4
-        #nyquist = 0.5 * fs
-        #normal_cutoff = cutoff / nyquist
-        #b, a = butter(order, normal_cutoff, btype='low', analog=False)
-        #filtered_data = np.zeros_like(data_np)
-        ##for i in np.arange(1000, 4095, 2):
-        #filtered_data = filtfilt(b, a, data_np, axis=1)
-        #filtered_tensor = torch.tensor(filtered_data[:, -1], device=self.device)
-        #self._forces_filtered[:, 0] = filtered_tensor
-
         # force tracking
         force_error = torch.square(self._forces_reference[:, 0] - self._forces[:, 0])
         force_error_mapped = torch.exp(-force_error / 0.25)
-        
-        # force variance
-        force_variance = self._forces_buffer.var(dim=1)
 
-        # force velocity
-        first_differences = self._forces_buffer[:, 1:] - self._forces_buffer[:, :-1]
-        force_velocity = first_differences.abs().mean(dim=1)
-
-        # force acceleration
-        second_differences = first_differences[:, 1:] - first_differences[:, :-1]
-        force_acceleration = second_differences.abs().mean(dim=1)
-
-        # force jerk
-        third_difference = second_differences[:, 1:] - second_differences[:, :-1]
-        force_jerk = third_difference.abs().mean(dim=1)
-
-        # force snap
-        forth_difference = third_difference[:, 1:] - third_difference[:, :-1]
-        force_snap = forth_difference.abs().mean(dim=1)
-
-        # force min max
-        force_min = self._forces_buffer.min(dim=1).values
-        force_max = self._forces_buffer.max(dim=1).values
-        force_min_max = force_max - force_min
-
-        # force data
-        self._forces_data[:, 0] = force_variance
-        self._forces_data[:, 1] = force_acceleration
-        self._forces_data[:, 2] = force_min
-        self._forces_data[:, 3] = force_max
+        # joint deviation
+        deviation = self._robot.data.joint_pos - self._robot.data.default_joint_pos
+        joint_deviation = torch.sum(torch.abs(deviation), dim=1)
 
         rewards = {
             "track_lin_vel_x_exp": lin_vel_error_mapped_x * self.cfg.lin_vel_reward_scale_x * self.step_dt,
@@ -545,22 +461,28 @@ class AnymalCEnv(DirectRLEnv):
             "feet_air_time": air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
             "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
             "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
-            "force_variance": force_variance * self.cfg.force_variance * self.step_dt,
-            "force_acceleration": force_acceleration * self.cfg.force_acceleration * self.step_dt,
-            "force_min_max": force_min_max * self.cfg.force_min_max * self.step_dt,
             "force_tracking": force_error * self.cfg.track_force * self.step_dt,
             "force_tracking2": force_error_mapped * self.cfg.track_force2 * self.step_dt,
-            "force_jerk": force_jerk * self.cfg.force_jerk * self.step_dt,
-            "force_snap": force_snap * self.cfg.force_snap * self.step_dt,
+            "joint_deviation": joint_deviation * self.cfg.joint_deviation * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
 
         mask_extra = self._extra_reward > 0
-        #reward[mask_extra] += 0.15
         reward[mask_extra] *= 2.0
 
-        #mask_force = self._forces.squeeze(dim=1) > 0.0
-        #reward[mask_force] += 0.001
+        self.count += 0.1
+
+        if (self.count_int > 10000):
+            self.count_int = 0
+        
+        self.count_int += 1
+        if (self.count_int % 25 == 0):
+            file_path = "/home/emanuele/dati.txt"
+            with open(file_path, 'w') as file:
+                file.write(f"Percentage_at_max_level: {self.percentage_at_max_level}\n")
+                file.write(f"Max_level_unlocked: {self.max_level_unlocked}\n")
+                file.write(f"Count: {self.count}\n")
+                file.write(f"Boundary: {self.boundary}\n")
 
         # Logging
         for key, value in rewards.items():
@@ -585,32 +507,24 @@ class AnymalCEnv(DirectRLEnv):
         self._previous_actions[env_ids] = 0.0
         
         # Sample new commands
-        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.5, 0.5)
+        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(0.0, 0.0)
     
         self._commands[env_ids, 2] = 0.0
         x_ = random.uniform(0.0, 0.3)
         y_ = random.uniform(-0.2, 0.2)
         self._commands[env_ids,0] = 0.0
-        self._commands[env_ids,1] = y_
-        a = random.randint(0, 10)
-        if (a == 5):
-            self._commands[env_ids,1] = 0.0
-
+        self._commands[env_ids,1] = 0.0
 
         # Sample new force commands
-        self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 10.0)
         self._integrators[env_ids] = 0.0
-        self._forces_buffer[env_ids, :] = 0.0
-
-
+        
         # Reward machines
         self._P[env_ids, :] = 0
         self._state[env_ids, 0] = 0
         self._phase[env_ids, 0] = 0
-        self._go[env_ids, 0] = 0
-        self._frequency[env_ids, 0] = random.randint(20, 20)
+        self._frequency[env_ids, 0] = random.randint(2, 4)
+        self._frequency[env_ids, 0] = random.randint(2, 4)
 
-      
         # Reset robot state
         joint_pos = self._robot.data.default_joint_pos[env_ids]
         joint_vel = self._robot.data.default_joint_vel[env_ids]
@@ -619,6 +533,273 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+
+        # Reset cube state
+        cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        cube_pose = self._robot.data.default_root_state[env_ids]
+        cube_pose[:, :3] += self._terrain.env_origins[env_ids]
+        self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_used, env_ids)
+
+        if (self.count > 300):
+            self.count = 0.0
+            self.boundary += 1.0
+        
+        #if (self.boundary > 20.0):
+        #    self.boundary = 20.0
+
+        # Curriculum learning
+        mask_level_up = (self._forces_buffer.min(dim=1).values > (self._forces_reference[:, 0] - self.boundary)) & (self._forces_buffer.max(dim=1).values < (self._forces_reference[:, 0] + self.boundary))
+        selected_mask_up = mask_level_up[env_ids]
+        self._level[env_ids[selected_mask_up], 0] += 1
+
+        mask_level_down = (self._forces_buffer.min(dim=1).values < 0.1)
+        selected_mask_down = mask_level_down[env_ids]
+        self._level[env_ids[selected_mask_down], 0] -= 1
+        
+        # increase level
+        num_at_max_level = (self._level[:, 0] == self.max_level_unlocked).sum().item()
+        self.percentage_at_max_level = num_at_max_level / 4096
+
+        if (self.percentage_at_max_level >= self.unlock_threshold):
+            self.count = 0.0
+            self.max_level_unlocked += 1
+
+        self._level[:, 0].clamp_(min=0, max=self.max_level_unlocked)
+     
+
+        livello0 = env_ids[(self._level[env_ids, 0] == 0)]
+        livello1 = env_ids[(self._level[env_ids, 0] == 1)]
+        livello2 = env_ids[(self._level[env_ids, 0] == 2)]
+        livello3 = env_ids[(self._level[env_ids, 0] == 3)]
+        livello4 = env_ids[(self._level[env_ids, 0] == 4)]
+        livello5 = env_ids[(self._level[env_ids, 0] == 5)]
+        livello6 = env_ids[(self._level[env_ids, 0] == 6)]
+        livello7 = env_ids[(self._level[env_ids, 0] == 7)]
+        livello8 = env_ids[(self._level[env_ids, 0] == 8)]
+        livello9 = env_ids[(self._level[env_ids, 0] == 9)]
+        livello10 = env_ids[(self._level[env_ids, 0] == 10)]
+        livello11 = env_ids[(self._level[env_ids, 0] == 11)]
+        livello12 = env_ids[(self._level[env_ids, 0] == 12)]
+        livello13 = env_ids[(self._level[env_ids, 0] == 13)]
+        livello14 = env_ids[(self._level[env_ids, 0] == 14)]
+        livello15 = env_ids[(self._level[env_ids, 0] == 15)]
+        livello16 = env_ids[(self._level[env_ids, 0] == 16)]
+        livello17 = env_ids[(self._level[env_ids, 0] == 17)]
+        livello18 = env_ids[(self._level[env_ids, 0] == 18)]
+        livello19 = env_ids[(self._level[env_ids, 0] == 19)]
+        livello20 = env_ids[(self._level[env_ids, 0] == 20)]
+        livello21 = env_ids[(self._level[env_ids, 0] == 21)]
+        livello22 = env_ids[(self._level[env_ids, 0] == 22)]
+        livello23 = env_ids[(self._level[env_ids, 0] == 23)]
+        livello24 = env_ids[(self._level[env_ids, 0] == 24)]
+        livello25 = env_ids[(self._level[env_ids, 0] == 25)]
+        livello26 = env_ids[(self._level[env_ids, 0] == 26)]
+        livello27 = env_ids[(self._level[env_ids, 0] == 27)]
+        livello28 = env_ids[(self._level[env_ids, 0] == 28)]
+        livello29 = env_ids[(self._level[env_ids, 0] == 29)]
+        livello30 = env_ids[(self._level[env_ids, 0] == 30)]
+        livello31 = env_ids[(self._level[env_ids, 0] == 31)]
+        livello32 = env_ids[(self._level[env_ids, 0] == 32)]
+        livello33 = env_ids[(self._level[env_ids, 0] == 33)]
+        livello34 = env_ids[(self._level[env_ids, 0] == 34)]
+        livello35 = env_ids[(self._level[env_ids, 0] == 35)]
+        livello36 = env_ids[(self._level[env_ids, 0] == 36)]
+        livello37 = env_ids[(self._level[env_ids, 0] == 37)]
+        livello38 = env_ids[(self._level[env_ids, 0] == 38)]
+        livello39 = env_ids[(self._level[env_ids, 0] == 39)]
+        livello40 = env_ids[(self._level[env_ids, 0] == 40)]
+        livello41 = env_ids[(self._level[env_ids, 0] == 41)]
+        livello42 = env_ids[(self._level[env_ids, 0] == 42)]
+        livello43 = env_ids[(self._level[env_ids, 0] == 43)]
+        livello44 = env_ids[(self._level[env_ids, 0] == 44)]
+        livello45 = env_ids[(self._level[env_ids, 0] == 45)]
+        livello46 = env_ids[(self._level[env_ids, 0] == 46)]
+        livello47 = env_ids[(self._level[env_ids, 0] == 47)]
+        livello48 = env_ids[(self._level[env_ids, 0] == 48)]
+        livello49 = env_ids[(self._level[env_ids, 0] == 49)]
+        livello50 = env_ids[(self._level[env_ids, 0] == 50)]
+        livello51 = env_ids[(self._level[env_ids, 0] == 51)]
+        livello52 = env_ids[(self._level[env_ids, 0] == 52)]
+        livello53 = env_ids[(self._level[env_ids, 0] == 53)]
+        livello54 = env_ids[(self._level[env_ids, 0] == 54)]
+        livello55 = env_ids[(self._level[env_ids, 0] == 55)]
+        livello56 = env_ids[(self._level[env_ids, 0] == 56)]
+        livello57 = env_ids[(self._level[env_ids, 0] == 57)]
+        livello58 = env_ids[(self._level[env_ids, 0] == 58)]
+        livello59 = env_ids[(self._level[env_ids, 0] == 59)]
+        livello60 = env_ids[(self._level[env_ids, 0] == 60)]
+        livello61 = env_ids[(self._level[env_ids, 0] == 61)]
+        livello62 = env_ids[(self._level[env_ids, 0] == 62)]
+        livello63 = env_ids[(self._level[env_ids, 0] == 63)]
+        livello64 = env_ids[(self._level[env_ids, 0] == 64)]
+        livello65 = env_ids[(self._level[env_ids, 0] == 65)]
+        livello66 = env_ids[(self._level[env_ids, 0] == 66)]
+        livello67 = env_ids[(self._level[env_ids, 0] == 67)]
+        livello68 = env_ids[(self._level[env_ids, 0] == 68)]
+        livello69 = env_ids[(self._level[env_ids, 0] == 69)]
+        livello70 = env_ids[(self._level[env_ids, 0] == 70)]
+        livello71 = env_ids[(self._level[env_ids, 0] == 71)]
+        livello72 = env_ids[(self._level[env_ids, 0] == 72)]
+        livello73 = env_ids[(self._level[env_ids, 0] == 73)]
+        livello74 = env_ids[(self._level[env_ids, 0] == 74)]
+        livello75 = env_ids[(self._level[env_ids, 0] == 75)]
+        livello76 = env_ids[(self._level[env_ids, 0] == 76)]
+        livello77 = env_ids[(self._level[env_ids, 0] == 77)]
+        livello78 = env_ids[(self._level[env_ids, 0] == 78)]
+        livello79 = env_ids[(self._level[env_ids, 0] == 79)]
+        livello80 = env_ids[(self._level[env_ids, 0] == 80)]
+        livello81 = env_ids[(self._level[env_ids, 0] == 81)]
+        livello82 = env_ids[(self._level[env_ids, 0] == 82)]
+        livello83 = env_ids[(self._level[env_ids, 0] == 83)]
+        livello84 = env_ids[(self._level[env_ids, 0] == 84)]
+        livello85 = env_ids[(self._level[env_ids, 0] == 85)]
+        livello86 = env_ids[(self._level[env_ids, 0] == 86)]
+        livello87 = env_ids[(self._level[env_ids, 0] == 87)]
+        livello88 = env_ids[(self._level[env_ids, 0] == 88)]
+        livello89 = env_ids[(self._level[env_ids, 0] == 89)]
+        livello90 = env_ids[(self._level[env_ids, 0] == 90)]
+        livello91 = env_ids[(self._level[env_ids, 0] == 91)]
+        livello92 = env_ids[(self._level[env_ids, 0] == 92)]
+        livello93 = env_ids[(self._level[env_ids, 0] == 93)]
+        livello94 = env_ids[(self._level[env_ids, 0] == 94)]
+        livello95 = env_ids[(self._level[env_ids, 0] == 95)]
+        livello96 = env_ids[(self._level[env_ids, 0] == 96)]
+        livello97 = env_ids[(self._level[env_ids, 0] == 97)]
+        livello98 = env_ids[(self._level[env_ids, 0] == 98)]
+        livello99 = env_ids[(self._level[env_ids, 0] == 99)]
+
+        self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(25.0, 25.0)
+        self._forces_reference[livello0] = torch.zeros_like(self._forces_reference[livello0]).uniform_(10.0, 11.0)
+        self._forces_reference[livello1] = torch.zeros_like(self._forces_reference[livello1]).uniform_(11.0, 12.0)
+        self._forces_reference[livello2] = torch.zeros_like(self._forces_reference[livello2]).uniform_(12.0, 13.0)
+        self._forces_reference[livello3] = torch.zeros_like(self._forces_reference[livello3]).uniform_(13.0, 14.0)
+        self._forces_reference[livello4] = torch.zeros_like(self._forces_reference[livello4]).uniform_(14.0, 15.0)
+        self._forces_reference[livello5] = torch.zeros_like(self._forces_reference[livello5]).uniform_(15.0, 16.0)
+        self._forces_reference[livello6] = torch.zeros_like(self._forces_reference[livello6]).uniform_(16.0, 17.0)
+        self._forces_reference[livello7] = torch.zeros_like(self._forces_reference[livello7]).uniform_(17.0, 18.0)
+        self._forces_reference[livello8] = torch.zeros_like(self._forces_reference[livello8]).uniform_(18.0, 19.0)
+        self._forces_reference[livello9] = torch.zeros_like(self._forces_reference[livello9]).uniform_(19.0, 20.0)
+        self._forces_reference[livello10] = torch.zeros_like(self._forces_reference[livello10]).uniform_(20.0, 21.0)
+        self._forces_reference[livello11] = torch.zeros_like(self._forces_reference[livello11]).uniform_(21.0, 22.0)
+        self._forces_reference[livello12] = torch.zeros_like(self._forces_reference[livello12]).uniform_(22.0, 23.0)
+        self._forces_reference[livello13] = torch.zeros_like(self._forces_reference[livello13]).uniform_(23.0, 24.0)
+        self._forces_reference[livello14] = torch.zeros_like(self._forces_reference[livello14]).uniform_(24.0, 25.0)
+        #self._forces_reference[livello15] = torch.zeros_like(self._forces_reference[livello15]).uniform_(25.0, 25.0)
+        #self._forces_reference[livello16] = torch.zeros_like(self._forces_reference[livello16]).uniform_(25.0, 25.0)
+        #self._forces_reference[livello17] = torch.zeros_like(self._forces_reference[livello17]).uniform_(25.0, 25.0)
+        #self._forces_reference[livello18] = torch.zeros_like(self._forces_reference[livello18]).uniform_(25.0, 25.0)
+        #self._forces_reference[livello19] = torch.zeros_like(self._forces_reference[livello19]).uniform_(25.0, 25.0)
+        
+
+        # current material
+        material = self._cuboid.root_physx_view.get_material_properties()
+
+        # Levels
+        material[livello0, 0, 2] = -1000.0
+        material[livello1, 0, 2] = -2000.0
+        material[livello2, 0, 2] = -3000.0
+        material[livello3, 0, 2] = -4000.0
+        material[livello4, 0, 2] = -5000.0
+        material[livello5, 0, 2] = -6000.0
+        material[livello6, 0, 2] = -7000.0
+        material[livello7, 0, 2] = -8000.0
+        material[livello8, 0, 2] = -9000.0
+        material[livello9, 0, 2] = -10000.0
+        material[livello10, 0, 2] = -11000.0
+        material[livello11, 0, 2] = -12000.0
+        material[livello12, 0, 2] = -13000.0
+        material[livello13, 0, 2] = -14000.0
+        material[livello14, 0, 2] = -15000.0
+        material[livello15, 0, 2] = -16000.0
+        material[livello16, 0, 2] = -17000.0
+        material[livello17, 0, 2] = -18000.0
+        material[livello18, 0, 2] = -19000.0
+        material[livello19, 0, 2] = -20000.0
+        material[livello20, 0, 2] = -21000.0
+        material[livello21, 0, 2] = -22000.0
+        material[livello22, 0, 2] = -23000.0
+        material[livello23, 0, 2] = -24000.0
+        material[livello24, 0, 2] = -25000.0
+        material[livello25, 0, 2] = -26000.0
+        material[livello26, 0, 2] = -27000.0
+        material[livello27, 0, 2] = -28000.0
+        material[livello28, 0, 2] = -29000.0
+        material[livello29, 0, 2] = -30000.0
+        material[livello30, 0, 2] = -31000.0
+        material[livello31, 0, 2] = -32000.0
+        material[livello32, 0, 2] = -33000.0
+        material[livello33, 0, 2] = -34000.0
+        material[livello34, 0, 2] = -35000.0
+        material[livello35, 0, 2] = -36000.0
+        material[livello36, 0, 2] = -37000.0
+        material[livello37, 0, 2] = -38000.0
+        material[livello38, 0, 2] = -39000.0
+        material[livello39, 0, 2] = -40000.0
+        material[livello40, 0, 2] = -41000.0
+        material[livello41, 0, 2] = -42000.0
+        material[livello42, 0, 2] = -43000.0
+        material[livello43, 0, 2] = -44000.0
+        material[livello44, 0, 2] = -45000.0
+        material[livello45, 0, 2] = -46000.0
+        material[livello46, 0, 2] = -47000.0
+        material[livello47, 0, 2] = -48000.0
+        material[livello48, 0, 2] = -49000.0
+        material[livello49, 0, 2] = -50000.0
+        material[livello50, 0, 2] = -51000.0
+        material[livello51, 0, 2] = -52000.0
+        material[livello52, 0, 2] = -53000.0
+        material[livello53, 0, 2] = -54000.0
+        material[livello54, 0, 2] = -55000.0
+        material[livello55, 0, 2] = -56000.0
+        material[livello56, 0, 2] = -57000.0
+        material[livello57, 0, 2] = -58000.0
+        material[livello58, 0, 2] = -59000.0
+        material[livello59, 0, 2] = -60000.0
+        material[livello60, 0, 2] = -61000.0
+        material[livello61, 0, 2] = -62000.0
+        material[livello62, 0, 2] = -63000.0
+        material[livello63, 0, 2] = -64000.0
+        material[livello64, 0, 2] = -65000.0
+        material[livello65, 0, 2] = -66000.0
+        material[livello66, 0, 2] = -67000.0
+        material[livello67, 0, 2] = -68000.0
+        material[livello68, 0, 2] = -69000.0
+        material[livello69, 0, 2] = -70000.0
+        material[livello70, 0, 2] = -71000.0
+        material[livello71, 0, 2] = -72000.0
+        material[livello72, 0, 2] = -73000.0
+        material[livello73, 0, 2] = -74000.0
+        material[livello74, 0, 2] = -75000.0
+        material[livello75, 0, 2] = -76000.0
+        material[livello76, 0, 2] = -77000.0
+        material[livello77, 0, 2] = -78000.0
+        material[livello78, 0, 2] = -79000.0
+        material[livello79, 0, 2] = -80000.0
+        material[livello80, 0, 2] = -81000.0
+        material[livello81, 0, 2] = -82000.0
+        material[livello82, 0, 2] = -83000.0
+        material[livello83, 0, 2] = -84000.0
+        material[livello84, 0, 2] = -85000.0
+        material[livello85, 0, 2] = -86000.0
+        material[livello86, 0, 2] = -87000.0
+        material[livello87, 0, 2] = -88000.0
+        material[livello88, 0, 2] = -89000.0
+        material[livello89, 0, 2] = -90000.0
+        material[livello90, 0, 2] = -91000.0
+        material[livello91, 0, 2] = -92000.0
+        material[livello92, 0, 2] = -93000.0
+        material[livello93, 0, 2] = -94000.0
+        material[livello94, 0, 2] = -95000.0
+        material[livello95, 0, 2] = -96000.0
+        material[livello96, 0, 2] = -97000.0
+        material[livello97, 0, 2] = -98000.0
+        material[livello98, 0, 2] = -99000.0
+        material[livello99, 0, 2] = -100000.0
+        env_ids_cup = env_ids.cpu()
+        self._cuboid.root_physx_view.set_material_properties(material, env_ids_cup) # forse devo mettere tutti
+
+   
+        self._forces_buffer[env_ids, :] = 0.0
 
         # Logging
         extras = dict()
