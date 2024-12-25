@@ -153,7 +153,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=1000,
+                compliant_contact_stiffness=500,
                 #compliant_contact_damping=400,
                 restitution=0.0,
             ),
@@ -171,15 +171,15 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     # reward scales
     lin_vel_reward_scale_x = 1.0*3
     lin_vel_reward_scale_y = 1.0*3
-    lin_vel_reward_scale_x2 = 0.0 #-10.0
-    lin_vel_reward_scale_y2 = 0.0 #-10.0
+    lin_vel_reward_scale_x2 = 6.0
+    lin_vel_reward_scale_y2 = 6.0
     z_vel_reward_scale = -2.0*2
     ang_vel_reward_scale = -0.05*3
     joint_torque_reward_scale = -2.5e-5
     joint_accel_reward_scale = -2.5e-7
     joint_vel_reward_scale = 0.0
     action_rate_reward_scale = -0.01
-    feet_air_time_reward_scale = 0.0 #0.1
+    feet_air_time_reward_scale = 1.0
     undersired_contact_reward_scale = -1.0
     flat_orientation_reward_scale = -5.0*2
 
@@ -191,8 +191,8 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     track_force2 = 2.0
     force_jerk = 0.0 #-0.00000001
     force_snap = 0.0
-    joint_deviation = -0.5
-    energy = 0.0 #-0.0055
+    joint_deviation = -0.75
+    energy = -0.005
  
 
     ## reward scales
@@ -441,9 +441,11 @@ class AnymalCEnv(DirectRLEnv):
         # linear velocity tracking_x
         lin_vel_error_x = torch.square(self._commands[:, 0] - self._robot.data.root_lin_vel_b[:, 0])
         lin_vel_error_mapped_x = torch.exp(-lin_vel_error_x / 0.15)
+        lin_vel_error_mapped_x2 = torch.sign(self._commands[:, 0]) * torch.clamp(self._robot.data.root_lin_vel_b[:, 0], max=torch.abs(self._commands[:, 0]), min=-torch.abs(self._commands[:, 0]))
         # linear velocity tracking_y
         lin_vel_error_y = torch.square(self._commands[:, 1] - self._robot.data.root_lin_vel_b[:, 1])
         lin_vel_error_mapped_y = torch.exp(-lin_vel_error_y / 0.15)
+        lin_vel_error_mapped_y2 = torch.sign(self._commands[:, 1]) * torch.clamp(self._robot.data.root_lin_vel_b[:, 1], max=torch.abs(self._commands[:, 1]), min=-torch.abs(self._commands[:, 1]))
         # z velocity tracking
         z_vel_error = torch.square(self._robot.data.root_lin_vel_b[:, 2])
         # angular velocity x/y
@@ -513,7 +515,7 @@ class AnymalCEnv(DirectRLEnv):
         self._state[:, 0][maschera2_1] = 2
         #self._extra_reward2[:, 0][maschera2_1] = 1
         self._ok[:, 0][maschera2_1] = 0
-        self._transition_cost[:, 0][maschera2_1] = 1
+        #self._transition_cost[:, 0][maschera2_1] = 1
         maschera2_ok = (self._P != self._sequenza_target_2).any(dim=1) & (self._state == 2).all(dim=1)
         self._ok[:, 0][maschera2_ok] += 1
         maschera2_2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 2).all(dim=1) & (self._ok < 1).all(dim=1)
@@ -535,7 +537,7 @@ class AnymalCEnv(DirectRLEnv):
         self._state[:, 0][maschera4_1] = 0
         #self._extra_reward2[:, 0][maschera4_1] = 1
         self._ok[:, 0][maschera4_1] = 0
-        self._transition_cost[:, 0][maschera4_1] = 1
+        #self._transition_cost[:, 0][maschera4_1] = 1
         maschera4_ok = (self._P != self._sequenza_target_4).any(dim=1) & (self._state == 0).all(dim=1)
         self._ok[:, 0][maschera4_ok] += 1
         maschera4_2 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == 0).all(dim=1) & (self._ok < 1).all(dim=1)
@@ -646,8 +648,8 @@ class AnymalCEnv(DirectRLEnv):
         rewards = {
             "track_lin_vel_x_exp": lin_vel_error_mapped_x * self.cfg.lin_vel_reward_scale_x * self.step_dt,
             "track_lin_vel_y_exp": lin_vel_error_mapped_y * self.cfg.lin_vel_reward_scale_y * self.step_dt,
-            "track_lin_vel_x_exp2": lin_vel_error_x * self.cfg.lin_vel_reward_scale_x2 * self.step_dt,
-            "track_lin_vel_y_exp2": lin_vel_error_y * self.cfg.lin_vel_reward_scale_y2 * self.step_dt,
+            "track_lin_vel_x_exp2": lin_vel_error_mapped_x2 * self.cfg.lin_vel_reward_scale_x2 * self.step_dt,
+            "track_lin_vel_y_exp2": lin_vel_error_mapped_y2 * self.cfg.lin_vel_reward_scale_y2 * self.step_dt,
             "track_yaw": yaw_error_mapped * self.cfg.track_yaw * self.step_dt,
             "lin_vel_z_l2": z_vel_error * self.cfg.z_vel_reward_scale * self.step_dt,
             "ang_vel_xy_l2": ang_vel_error * self.cfg.ang_vel_reward_scale * self.step_dt,
@@ -675,40 +677,23 @@ class AnymalCEnv(DirectRLEnv):
         #    reward[mask_extra] *= 5.0
 
         #if (self.count_int >= 5000):
-        mask_extra3_ = (self._extra_reward3_ > 0.5) & (torch.sqrt(torch.sum((self._commands[:, :2] - self._robot.data.root_lin_vel_b[:, :2])**2, dim=1)) < self.epsilon)
-        reward[mask_extra3_] *= 2.0
+        mask_extra3_ = (self._extra_reward3_ > 0.5)# & (torch.sqrt(torch.sum((self._commands[:, :2] - self._robot.data.root_lin_vel_b[:, :2])**2, dim=1)) < self.epsilon)
+        reward[mask_extra3_] += 0.03
 
-        mask_extra2_ = (self._extra_reward2_ > 0.5) & (torch.sqrt(torch.sum((self._commands[:, :2] - self._robot.data.root_lin_vel_b[:, :2])**2, dim=1)) < self.epsilon)
-        reward[mask_extra2_] *= 2.0
+        mask_extra2_ = (self._extra_reward2_ > 0.5)# & (torch.sqrt(torch.sum((self._commands[:, :2] - self._robot.data.root_lin_vel_b[:, :2])**2, dim=1)) < self.epsilon)
+        reward[mask_extra2_] += 0.1
 
-        mask_cost = (self._transition_cost_ > 0.5)
-        reward[mask_cost] /= 2.0
-    
-        if (self.count_int > 1000):
-            self.t_min += 5
-#
-        #if (self.prob < 1):
-        #    self.prob = 1
-#
-        ##mask_extra2 = (self._extra_reward2_ > 0.5) & (torch.abs(self._commands[:, 0]) < 0.02) & (torch.abs(self._commands[:, 1]) < 0.02)
-        ##reward[mask_extra2] *= 2.0
-        #
-        #
-        #casualita = random.randint(1, self.prob)
-        #if (casualita == 1):
-        #    #mask_extra2 = (self._extra_reward2_ > 0.5) & (torch.abs(self._commands[:, 0]) < 0.02) & (torch.abs(self._commands[:, 1]) < 0.02)
-        #    #reward[mask_extra2] *= 3.0
-        #    
-        #    mask_extra2_ = (self._extra_reward2_ > 0.5)
-        #    reward[mask_extra2_] *= 2.0
+        #mask_vel = ((self._robot.data.root_lin_vel_b[:, :2] - self._commands[:, :2]) * self._commands[:, :2] >= 0.0).all(dim=1)
+        #reward[mask_vel] += 0.05
 
-            
+        #mask_vel1 = (torch.abs(self._commands[:, 0]) > 0.0) & (torch.abs(self._robot.data.root_lin_vel_b[:, 0]) < 0.01)
+        #mask_vel2 = (torch.abs(self._commands[:, 1]) > 0.0) & (torch.abs(self._robot.data.root_lin_vel_b[:, 1]) < 0.01)
+        #mask_vel = mask_vel1 | mask_vel2
+        #reward[mask_vel] -= 0.01
 
+        #mask_cost = (self._transition_cost_ > 0.5)
+        #reward[mask_cost] -= 0.03
 
-        #mask_velx = (torch.abs(self._commands[:, 0]) > 0.0) & (torch.abs(self._robot.data.root_lin_vel_b[:, 0]) < 0.01)
-        #reward[mask_velx] /= 5.0
-        #mask_vely = (torch.abs(self._commands[:, 1]) > 0.0) & (torch.abs(self._robot.data.root_lin_vel_b[:, 1]) < 0.01)
-        #reward[mask_vely] /= 5.0
 
         #if (self.count_int > 1000):
         #    self.count_int = 0
@@ -772,7 +757,7 @@ class AnymalCEnv(DirectRLEnv):
 
 
         # Sample new force commands
-        self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(1.0, 1.0)
+        self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(3.0, 3.0)
         self._integrators[env_ids] = 0.0
         self._forces_buffer[env_ids, :] = 0.0
         self._forces_buffer_state[env_ids, :] = 0.0

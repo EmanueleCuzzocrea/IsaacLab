@@ -163,7 +163,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=1.0,
                 dynamic_friction=1.0,
-                compliant_contact_stiffness=1000,
+                compliant_contact_stiffness=500,
                 #compliant_contact_damping=3000,
                 restitution=0.0,
             ),
@@ -361,12 +361,12 @@ class AnymalCEnv(DirectRLEnv):
 
     def _get_observations(self) -> dict:
         self.a += 0.0005*(50.0 - self._forces[0,0].item())
-        self._forces_reference[:, 0] = 1.0
+        self._forces_reference[:, 0] = 3.0
         if (self._forces[0,0].item() > 0.0):
             self._commands[:, 0] = 0.0
         else:
             self._commands[:, 0] = 0.2
-        self._commands[:, 1] = 0.15
+        self._commands[:, 1] = 0.1
         self._commands[:, 2] = 0.0
         
         self._previous_actions = self._actions.clone()
