@@ -20,7 +20,7 @@ class AnymalCFlatPPORunnerCfg(RslRlOnPolicyRunnerCfg):
     experiment_name = "anymal_c_flat_direct"
     empirical_normalization = False
     policy = RslRlPpoActorCriticCfg(
-        init_noise_std=1.0,
+        init_noise_std=0.0,
         actor_hidden_dims=[128, 128, 128],
         critic_hidden_dims=[128, 128, 128],
         activation="elu",

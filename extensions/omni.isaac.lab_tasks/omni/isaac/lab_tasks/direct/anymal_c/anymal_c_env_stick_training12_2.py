@@ -20,9 +20,10 @@ from omni.isaac.lab.utils.math import subtract_frame_transforms
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal import butter, filtfilt, lfilter
+from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
 # Pre-defined configs
-from omni.isaac.lab_assets.anymal import ANYMAL_STICK_CFG  # isort: skip
-from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
+from omni.isaac.lab_assets.anymal import ANYMAL_STICK_F_CFG  # isort: skip
+from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG2  # isort: skip
 
 
 @configclass
@@ -110,24 +111,34 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
         dt=1 / 200,
         render_interval=decimation,
         disable_contact_processing=True,
-        physx=sim_utils.PhysxCfg(
-            #solver_type=0,
-            #enable_ccd=True,
-            #bounce_threshold_velocity=100.0,
-        ),
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
             restitution_combine_mode="multiply",
             static_friction=1.0,
             dynamic_friction=1.0,
             restitution=0.0,
-            #compliant_contact_stiffness=1000,
-            #compliant_contact_damping=10000,
         ),
     )
+    #terrain = TerrainImporterCfg(
+    #    prim_path="/World/ground",
+    #    terrain_type="plane",
+    #    collision_group=-1,
+    #    physics_material=sim_utils.RigidBodyMaterialCfg(
+    #        friction_combine_mode="multiply",
+    #        restitution_combine_mode="multiply",
+    #        static_friction=1.0,
+    #        dynamic_friction=1.0,
+    #        restitution=0.0,
+    #        #compliant_contact_stiffness=1000000,
+    #        #compliant_contact_damping=1000,
+    #    ),
+    #    debug_vis=False,
+    #)
+
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
-        terrain_type="plane",
+        terrain_type="generator",
+        terrain_generator=ROUGH_TERRAINS_CFG2,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -135,10 +146,13 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             static_friction=1.0,
             dynamic_friction=1.0,
             restitution=0.0,
-            #compliant_contact_stiffness=1000000,
-            #compliant_contact_damping=1000,
         ),
-        
+        #visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.3, 0.3, 0.3)),
+        visual_material=sim_utils.MdlFileCfg(
+            mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
+            project_uvw=True,
+            texture_scale=(0.25, 0.25),
+        ),
         debug_vis=False,
     )
 
@@ -149,7 +163,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     events: EventCfg = EventCfg()
 
     # robot
-    robot: ArticulationCfg = ANYMAL_STICK_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    robot: ArticulationCfg = ANYMAL_STICK_F_CFG.replace(prim_path="/World/envs/env_.*/Robot")
     
     # sensors
     contact_sensor: ContactSensorCfg = ContactSensorCfg(
@@ -159,12 +173,12 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     cuboid_cfg: RigidObjectCfg = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Cuboid",
         spawn=sim_utils.CuboidCfg(
-            size=(0.5, 10.0, 1.0),
+            size=(0.5, 10.0, 1.5),
             physics_material=sim_utils.RigidBodyMaterialCfg(
-                static_friction=1.0,
-                dynamic_friction=1.0,
-                compliant_contact_stiffness=500,
-                #compliant_contact_damping=3000,
+                static_friction=0.5,
+                dynamic_friction=0.5,
+                compliant_contact_stiffness=100000,
+                compliant_contact_damping=1000,
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
@@ -174,9 +188,9 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             ),
             mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
             collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1)),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 0.6)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 0.75)),
     )
 
     # reward scales
@@ -218,7 +232,7 @@ class AnymalCRoughEnvCfg(AnymalCFlatEnvCfg):
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
         terrain_type="generator",
-        terrain_generator=ROUGH_TERRAINS_CFG,
+        terrain_generator=ROUGH_TERRAINS_CFG2,
         max_init_terrain_level=9,
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
@@ -268,10 +282,10 @@ class AnymalCEnv(DirectRLEnv):
         self._phase = torch.zeros(self.num_envs, 1, device=self.device)
         self._ok = torch.zeros(self.num_envs, 1, device=self.device)
         self._frequency = torch.zeros(self.num_envs, 1, device=self.device)
-        self._sequenza_target_1 = torch.tensor([1, 1, 0, 0], device=self.device)
-        self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([0, 0, 1, 1], device=self.device)
-        self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
+        self._sequenza_target_1 = torch.tensor([0, 1, 1, 1], device=self.device)
+        self._sequenza_target_2 = torch.tensor([1, 0, 1, 1], device=self.device)
+        self._sequenza_target_3 = torch.tensor([1, 1, 0, 1], device=self.device)
+        self._sequenza_target_4 = torch.tensor([1, 1, 1, 0], device=self.device)
 
         # Logging
         self._episode_sums = {
@@ -305,7 +319,7 @@ class AnymalCEnv(DirectRLEnv):
         self._forces_boolean = torch.zeros(self.num_envs, 1, device=self.device)
         self.yaw = torch.zeros(self.num_envs, 1, device=self.device)
 
-        self._forces_buffer = torch.zeros(self.num_envs, 300, device=self.device)
+        self._forces_buffer = torch.zeros(self.num_envs, 600, device=self.device)
         self._forces_buffer_normalized = torch.zeros(self.num_envs, 20, device=self.device)
         self._forces_filtered = torch.zeros(self.num_envs, 1, device=self.device)
 
@@ -319,6 +333,8 @@ class AnymalCEnv(DirectRLEnv):
 
 
         self.a = 0.0
+
+        self.count_4 = torch.zeros(self.num_envs, 1, device=self.device)
 
         # Plot
         self.count = 0
@@ -346,7 +362,7 @@ class AnymalCEnv(DirectRLEnv):
         self.scene.clone_environments(copy_from_source=False)
         self.scene.filter_collisions(global_prim_paths=[self.cfg.terrain.prim_path])
         # add lights
-        light_cfg = sim_utils.DomeLightCfg(intensity=2000.0, color=(0.75, 0.75, 0.75))
+        light_cfg = sim_utils.DomeLightCfg(intensity=750.0, texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",)
         light_cfg.func("/World/Light", light_cfg)
 
         # Cuboid
@@ -361,7 +377,7 @@ class AnymalCEnv(DirectRLEnv):
 
     def _get_observations(self) -> dict:
         self.a += 0.0005*(50.0 - self._forces[0,0].item())
-        self._forces_reference[:, 0] = 3.0
+        self._forces_reference[:, 0] = 40.0
         if (self._forces[0,0].item() > 0.0):
             self._commands[:, 0] = 0.0
         else:
@@ -390,8 +406,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._forces_reference,
                     self._P,
                     self._state,
-                    #self._phase,
-                    #self._frequency,
+                    self._phase,
                 )
                 if tensor is not None
             ],
@@ -447,45 +462,43 @@ class AnymalCEnv(DirectRLEnv):
         
         # reward machine
         self._extra_reward = torch.zeros(self.num_envs, 1, device=self.device)
-        mask_phase = (self._phase[:, 0] < 16)
+        mask_phase = (self._phase[:, 0] < 19)
         self._phase[:, 0][mask_phase] += 1
 
-        self._extra_reward2[:, 0] = 0
 
-        maschera1_1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._state == 0).all(dim=1)
-        self._state[:, 0][maschera1_1] = 1
-        self._ok[:, 0][maschera1_1] = 0
-        maschera1_ok = (self._P != self._sequenza_target_1).any(dim=1) & (self._state == 1).all(dim=1)
-        self._ok[:, 0][maschera1_ok] += 1
-        maschera1_2 = (self._P == self._sequenza_target_1).all(dim=1) & (self._state == 1).all(dim=1) & (self._ok < 5).all(dim=1)
-        self._state[:, 0][maschera1_2] = 1
+        maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._state == 0).all(dim=1)
+        self._state[:, 0][maschera1] = 1
+        self._phase[:, 0][maschera1] = 0
+        maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 1).all(dim=1)
+        self._state[:, 0][maschera2] = 2
+        self._phase[:, 0][maschera2] = 0
+        maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == 2).all(dim=1)
+        self._state[:, 0][maschera3] = 3
+        self._phase[:, 0][maschera3] = 0
+        maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == 3).all(dim=1)
+        self._state[:, 0][maschera4] = 0
+        self._phase[:, 0][maschera4] = 0
 
-        maschera2_1 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 1).all(dim=1)
-        self._state[:, 0][maschera2_1] = 2
-        self._ok[:, 0][maschera2_1] = 0
-        maschera2_ok = (self._P != self._sequenza_target_2).any(dim=1) & (self._state == 2).all(dim=1)
-        self._ok[:, 0][maschera2_ok] += 1
-        maschera2_2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 2).all(dim=1) & (self._ok < 5).all(dim=1)
-        self._state[:, 0][maschera2_2] = 2
+        #maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._phase > 0).all(dim=1) & (self._state == 0).all(dim=1)
+        #self._state[:, 0][maschera1] = 1
+        #self._phase[:, 0][maschera1] = 0
+        #maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._phase > 5).all(dim=1) & (self._state == 1).all(dim=1)
+        #self._state[:, 0][maschera2] = 2
+        #self._phase[:, 0][maschera2] = 0
+        #maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._phase > 0).all(dim=1) & (self._state == 2).all(dim=1)
+        #self._state[:, 0][maschera3] = 3
+        #self._phase[:, 0][maschera3] = 0
+        #maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._phase > 5).all(dim=1) & (self._state == 3).all(dim=1)
+        #self._state[:, 0][maschera4] = 0
+        #self._phase[:, 0][maschera4] = 0
 
-        maschera3_1 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == 2).all(dim=1)
-        self._state[:, 0][maschera3_1] = 3
-        self._ok[:, 0][maschera3_1] = 0
-        maschera3_ok = (self._P != self._sequenza_target_3).any(dim=1) & (self._state == 3).all(dim=1)
-        self._ok[:, 0][maschera3_ok] += 1
-        maschera3_2 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == 3).all(dim=1) & (self._ok < 5).all(dim=1)
-        self._state[:, 0][maschera3_2] = 3
+        #print(self.count_4)
+        #print(self._phase)
 
-        maschera4_1 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == 3).all(dim=1)
-        self._state[:, 0][maschera4_1] = 0
-        self._ok[:, 0][maschera4_1] = 0
-        maschera4_ok = (self._P != self._sequenza_target_4).any(dim=1) & (self._state == 0).all(dim=1)
-        self._ok[:, 0][maschera4_ok] += 1
-        maschera4_2 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == 0).all(dim=1) & (self._ok < 5).all(dim=1)
-        self._state[:, 0][maschera4_2] = 0
 
-        print("State", self._state)
-        print("Ok", self._ok)
+
+        #print("State", self._state)
+        #print("Ok", self._ok)
 
         
 
@@ -509,7 +522,7 @@ class AnymalCEnv(DirectRLEnv):
         z_component = torch.abs(interaction_force[:, 0])
         #z_component *= torch.cos(self.yaw[:, 0])
         self._forces[:,0] = z_component
-        #print(self._forces)
+        print(self._forces)
         #print(self._robot.data.root_lin_vel_b)
         
         # interaction force buffer
@@ -520,7 +533,7 @@ class AnymalCEnv(DirectRLEnv):
         #print(self.count)
         self.t_list.append(self.count * (4/200))
         self.force_list.append(self._forces[0,0].item())
-        #self.force_list.append(self._robot.data.root_lin_vel_b[0,0].item())
+        #self.force_list.append(self._phase[0,0].item())
         
 
         # force tracking
@@ -599,13 +612,15 @@ class AnymalCEnv(DirectRLEnv):
         self._commands[env_ids,1] = 0.0
 
         # Sample new force commands
-        self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 10.0)
+        #self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 10.0)
         self.a = 0.0
+        mae = torch.mean(torch.abs(self._forces_reference[0, 0] - self._forces_buffer[0, :]))
+        print("MAE: ", mae.item())
         self._forces_buffer[env_ids, :] = 0.0
 
         # Reward machines
         self._P[env_ids, :] = 0
-        self._state[env_ids, 0] = 0
+        self._state[env_ids, 0] = 1
         self._phase[env_ids, 0] = 0
         self._ok[env_ids, 0] = 0
         self._frequency[env_ids, 0] = 3
@@ -620,8 +635,10 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
 
         
-        cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        cube_used = torch.tensor([1.15, 0.0, 0.15, 0.0, 0.0, 0.0, 0.0], device=self.device)
         self._cuboid.write_root_pose_to_sim(default_root_state[:, :7] + cube_used, env_ids)
+
+        self.count_4[env_ids, :] = 0
     
 
         # Logging

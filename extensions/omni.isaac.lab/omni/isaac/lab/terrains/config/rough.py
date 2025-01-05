@@ -50,3 +50,17 @@ ROUGH_TERRAINS_CFG = TerrainGeneratorCfg(
     },
 )
 """Rough terrains configuration."""
+
+
+
+
+ROUGH_TERRAINS_CFG2 = TerrainGeneratorCfg(
+    size=(100.0, 100.0),
+    use_cache=False,
+    sub_terrains={
+        "boxes": terrain_gen.MeshRandomGridTerrainCfg(
+            proportion=0.2, grid_width=0.45, grid_height_range=(0.0, 0.0), platform_width=0.5
+        ),
+    },
+)
+"""Rough terrains configuration."""
