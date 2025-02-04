@@ -117,7 +117,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=50000,
+                compliant_contact_stiffness=100000,
                 compliant_contact_damping=1000,
                 restitution=0.0,
             ),
@@ -181,8 +181,8 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
 
 
     # reward scales
-    lin_vel_reward_scale_x = 1.0
-    lin_vel_reward_scale_y = 1.0
+    lin_vel_reward_scale_x = 1.5
+    lin_vel_reward_scale_y = 1.5
     z_vel_reward_scale = -2.0
     ang_vel_reward_scale = -0.05*3
     joint_torque_reward_scale = -2.5e-5
@@ -197,7 +197,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     track_force = 0.0
     track_force2 = 2.0
     joint_deviation = -0.7
-    energy = -0.0005
+    energy = -0.00005
 
 
 
@@ -370,7 +370,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._forces_reference,
                     self._P,
                     self._state,
-                    self._phase,
+                    #self._phase,
                 )
                 if tensor is not None
             ],
@@ -392,14 +392,14 @@ class AnymalCEnv(DirectRLEnv):
         self.yaw[:, 0] = torch.atan2(yaw1, yaw2)
 
         yaw_error = torch.square(self._commands[:, 2] - self.yaw[:, 0])
-        yaw_error_mapped = torch.exp(-yaw_error / 0.1)
+        yaw_error_mapped = torch.exp(-yaw_error / 0.15)
 
         # linear velocity tracking_x
         lin_vel_error_x = torch.square(self._commands[:, 0] - self._robot.data.root_lin_vel_b[:, 0])
-        lin_vel_error_mapped_x = torch.exp(-lin_vel_error_x / 0.1)
+        lin_vel_error_mapped_x = torch.exp(-lin_vel_error_x / 0.15)
         # linear velocity tracking_y
         lin_vel_error_y = torch.square(self._commands[:, 1] - self._robot.data.root_lin_vel_b[:, 1])
-        lin_vel_error_mapped_y = torch.exp(-lin_vel_error_y / 0.1)
+        lin_vel_error_mapped_y = torch.exp(-lin_vel_error_y / 0.15)
         # z velocity tracking
         z_vel_error = torch.square(self._robot.data.root_lin_vel_b[:, 2])
         # angular velocity x/y

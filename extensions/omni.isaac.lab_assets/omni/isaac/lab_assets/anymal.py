@@ -237,7 +237,7 @@ ANYMAL_STICK_F_CFG = ArticulationCfg(
         ),
         articulation_props=sim_utils.ArticulationRootPropertiesCfg(
             enabled_self_collisions=True, solver_position_iteration_count=4, solver_velocity_iteration_count=0),
-        #collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.005, rest_offset=0.0),
+            #collision_props=sim_utils.CollisionPropertiesCfg(contact_offset=0.00001, rest_offset=0.0),
     ),
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.6),
@@ -315,7 +315,7 @@ ANYMAL_STICK_D_CFG = ArticulationCfg(
     ),
     init_state=ArticulationCfg.InitialStateCfg(
         pos=(0.0, 0.0, 0.6),
-        rot=(0.92, 0.0, 0.0, 0.38),
+        #rot=(0.92, 0.0, 0.0, 0.38),
         joint_pos={
             ".*HAA": 0.0,       # all HAA
             ".*F_HFE": 0.4,     # both front HFE

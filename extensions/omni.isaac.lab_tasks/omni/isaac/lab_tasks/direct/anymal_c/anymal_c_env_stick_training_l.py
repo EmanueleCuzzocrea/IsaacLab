@@ -153,7 +153,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
-                compliant_contact_stiffness=50000,
+                compliant_contact_stiffness=100000,
                 compliant_contact_damping=1000,
                 restitution=0.0,
             ),
@@ -165,8 +165,8 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
 
 
     # reward scales
-    lin_vel_reward_scale_x = 3.0
-    lin_vel_reward_scale_y = 3.0
+    lin_vel_reward_scale_x = 1.5
+    lin_vel_reward_scale_y = 1.5
     z_vel_reward_scale = -2.0
     ang_vel_reward_scale = -0.05*3
     joint_torque_reward_scale = -2.5e-5
@@ -180,7 +180,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     track_yaw = 1.5
     track_force = 0.0
     track_force2 = 2.0
-    joint_deviation = -0.5
+    joint_deviation = -0.7
     energy = -0.00005
 
 
@@ -331,6 +331,7 @@ class AnymalCEnv(DirectRLEnv):
         mask_d = (torch.arange(4096, device=self.device) < 1000) | \
             (torch.arange(4096, device=self.device) % 2 != 0)
 
+        self._commands[mask_p, 0] = 0.1
         self._commands[mask_p, 1] = -0.2
         mask_force__ = self._forces.squeeze(dim=1) > 0.0001
         self._commands[mask_force__, 1] = 0.0
@@ -341,10 +342,6 @@ class AnymalCEnv(DirectRLEnv):
         self.counter[mask_change_vel_d, 0] = 0
         self._commands[mask_change_vel_d, 0] = torch.zeros_like(self._commands[mask_change_vel_d, 0]).uniform_(-1.0, 1.0)
         self._commands[mask_change_vel_d, 1] = torch.zeros_like(self._commands[mask_change_vel_d, 1]).uniform_(-1.0, 1.0)
-
-        mask_change_vel_p = (self.counter[:, 0] > 200) & mask_p
-        self.counter[mask_change_vel_p, 0] = 0
-        self._commands[mask_change_vel_p, 0] = torch.zeros_like(self._commands[mask_change_vel_p, 1]).uniform_(-0.2, 0.2)
         
         
         mask1 = (self._commands[:, 0] > 0.7)
@@ -383,7 +380,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._forces_reference,
                     self._P,
                     self._state,
-                    self._phase,
+                    #self._phase,
                 )
                 if tensor is not None
             ],

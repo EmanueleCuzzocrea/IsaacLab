@@ -40,26 +40,26 @@ class EventCfg:
         },
     )
 
-    #add_base_mass = EventTerm(
-    #    func=mdp.randomize_rigid_body_mass,
-    #    mode="startup",
-    #    params={
-    #        "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #        "mass_distribution_params": (-5.0, 5.0),
-    #        "operation": "add",
-    #    },
-    #)
+    add_base_mass = EventTerm(
+        func=mdp.randomize_rigid_body_mass,
+        mode="startup",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "mass_distribution_params": (-5.0, 5.0),
+            "operation": "add",
+        },
+    )
 
-    ## reset
-    #base_external_force_torque = EventTerm(
-    #    func=mdp.apply_external_force_torque,
-    #    mode="reset",
-    #    params={
-    #        "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #        "force_range": (-10.0, 10.0),
-    #        "torque_range": (-10.0, 10.0),
-    #    },
-    #)
+    # reset
+    base_external_force_torque = EventTerm(
+        func=mdp.apply_external_force_torque,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+            "force_range": (-0.1, 0.1),
+            "torque_range": (-0.1, 0.1),
+        },
+    )
 
     #reset_base = EventTerm(
     #    func=mdp.reset_root_state_uniform,
@@ -119,26 +119,9 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             restitution=0.0,
         ),
     )
-    #terrain = TerrainImporterCfg(
-    #    prim_path="/World/ground",
-    #    terrain_type="plane",
-    #    collision_group=-1,
-    #    physics_material=sim_utils.RigidBodyMaterialCfg(
-    #        friction_combine_mode="multiply",
-    #        restitution_combine_mode="multiply",
-    #        static_friction=1.0,
-    #        dynamic_friction=1.0,
-    #        restitution=0.0,
-    #        #compliant_contact_stiffness=1000000,
-    #        #compliant_contact_damping=1000,
-    #    ),
-    #    debug_vis=False,
-    #)
-
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
-        terrain_type="generator",
-        terrain_generator=ROUGH_TERRAINS_CFG2,
+        terrain_type="plane",
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -147,17 +130,32 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             dynamic_friction=1.0,
             restitution=0.0,
         ),
-        #visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.3, 0.3, 0.3)),
-        visual_material=sim_utils.MdlFileCfg(
-            mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
-            project_uvw=True,
-            texture_scale=(0.25, 0.25),
-        ),
         debug_vis=False,
     )
 
+    #terrain = TerrainImporterCfg(
+    #    prim_path="/World/ground",
+    #    terrain_type="generator",
+    #    terrain_generator=ROUGH_TERRAINS_CFG2,
+    #    collision_group=-1,
+    #    physics_material=sim_utils.RigidBodyMaterialCfg(
+    #        friction_combine_mode="multiply",
+    #        restitution_combine_mode="multiply",
+    #        static_friction=1.0,
+    #        dynamic_friction=1.0,
+    #        restitution=0.0,
+    #    ),
+    #    #visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.3, 0.3, 0.3)),
+    #    visual_material=sim_utils.MdlFileCfg(
+    #        mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
+    #        project_uvw=True,
+    #        texture_scale=(0.25, 0.25),
+    #    ),
+    #    debug_vis=False,
+    #)
+
     # scene
-    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=4.0, replicate_physics=True)
+    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=0.0, replicate_physics=True)
 
     # events
     events: EventCfg = EventCfg()
@@ -178,7 +176,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
                 static_friction=0.5,
                 dynamic_friction=0.5,
                 compliant_contact_stiffness=100000,
-                compliant_contact_damping=1000,
+                compliant_contact_damping=500,
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
@@ -190,7 +188,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1)),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, -0.9, 0.5)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, -1.0, 0.5)),
     )
 
     # reward scales
@@ -212,16 +210,6 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     force_min_max = 0.0
     track_force = 0.0
 
-    #lin_vel_reward_scale = 1.0*5
-    #yaw_rate_reward_scale = 0.5*5
-    #z_vel_reward_scale = -2.0*5
-    #ang_vel_reward_scale = -0.05*8
-    #joint_torque_reward_scale = -2.5e-8
-    #joint_accel_reward_scale = -2.5e-7*6
-    #action_rate_reward_scale = -0.01*6
-    #feet_air_time_reward_scale = 0.0
-    #undersired_contact_reward_scale = -1.0
-    #flat_orientation_reward_scale = -5.0*3
 
 
 @configclass
@@ -278,14 +266,34 @@ class AnymalCEnv(DirectRLEnv):
 
         # Reward machines parameters
         self._P = torch.zeros(self.num_envs, 4, device=self.device)
-        self._state = torch.zeros(self.num_envs, 1, device=self.device)
+        self._state = torch.zeros(self.num_envs, 4, device=self.device)
         self._phase = torch.zeros(self.num_envs, 1, device=self.device)
         self._ok = torch.zeros(self.num_envs, 1, device=self.device)
         self._frequency = torch.zeros(self.num_envs, 1, device=self.device)
-        self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
-        self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
-        self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
+        #self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
+        #self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
+        #self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
+        #self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
+
+        #self._sequenza_target_1 = torch.tensor([1, 1, 0, 0], device=self.device)
+        #self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
+        #self._sequenza_target_3 = torch.tensor([0, 0, 1, 1], device=self.device)
+        #self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
+
+        #self._sequenza_target_1 = torch.tensor([1, 0, 1, 0], device=self.device)
+        #self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
+        #self._sequenza_target_3 = torch.tensor([0, 1, 0, 1], device=self.device)
+        #self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
+
+        self._sequenza_target_1 = torch.tensor([0, 1, 1, 1], device=self.device)
+        self._sequenza_target_2 = torch.tensor([1, 0, 1, 1], device=self.device)
+        self._sequenza_target_3 = torch.tensor([1, 1, 0, 1], device=self.device)
+        self._sequenza_target_4 = torch.tensor([1, 1, 1, 0], device=self.device)
+
+        self._state_1 = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device)
+        self._state_2 = torch.tensor([0.0, 1.0, 0.0, 0.0], device=self.device)
+        self._state_3 = torch.tensor([0.0, 0.0, 1.0, 0.0], device=self.device)
+        self._state_4 = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)
 
         # Logging
         self._episode_sums = {
@@ -319,22 +327,14 @@ class AnymalCEnv(DirectRLEnv):
         self._forces_boolean = torch.zeros(self.num_envs, 1, device=self.device)
         self.yaw = torch.zeros(self.num_envs, 1, device=self.device)
 
-        self._forces_buffer = torch.zeros(self.num_envs, 600, device=self.device)
-        self._forces_buffer_normalized = torch.zeros(self.num_envs, 20, device=self.device)
-        self._forces_filtered = torch.zeros(self.num_envs, 1, device=self.device)
-
+        self._forces_buffer = torch.zeros(self.num_envs, 500, device=self.device)
+        self._vel_buffer = torch.zeros(self.num_envs, 500, device=self.device)
         self._forces_reference = torch.zeros(self.num_envs, 1, device=self.device)
 
-        self._forces_metric = torch.zeros(self.num_envs, 1, device=self.device)
         self._mae = torch.zeros(self.num_envs, 1, device=self.device)
         self._iteration = torch.zeros(self.num_envs, 1, device=self.device)
 
-        self._extra_reward2 = torch.zeros(self.num_envs, 1, device=self.device)
-
-
         self.a = 0.0
-
-        self.count_4 = torch.zeros(self.num_envs, 1, device=self.device)
 
         # Plot
         self.count = 0
@@ -362,7 +362,7 @@ class AnymalCEnv(DirectRLEnv):
         self.scene.clone_environments(copy_from_source=False)
         self.scene.filter_collisions(global_prim_paths=[self.cfg.terrain.prim_path])
         # add lights
-        light_cfg = sim_utils.DomeLightCfg(intensity=750.0, texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",)
+        light_cfg = sim_utils.DomeLightCfg(intensity=1500.0)#, texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",)
         light_cfg.func("/World/Light", light_cfg)
 
         # Cuboid
@@ -406,7 +406,6 @@ class AnymalCEnv(DirectRLEnv):
                     self._forces_reference,
                     self._P,
                     self._state,
-                    self._phase,
                 )
                 if tensor is not None
             ],
@@ -466,17 +465,17 @@ class AnymalCEnv(DirectRLEnv):
         self._phase[:, 0][mask_phase] += 1
 
 
-        maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._state == 0).all(dim=1)
-        self._state[:, 0][maschera1] = 1
+        maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._state == self._state_1).all(dim=1)
+        self._state[:, :][maschera1] = self._state_2
         self._phase[:, 0][maschera1] = 0
-        maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 1).all(dim=1)
-        self._state[:, 0][maschera2] = 2
+        maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == self._state_2).all(dim=1)
+        self._state[:, :][maschera2] = self._state_3
         self._phase[:, 0][maschera2] = 0
-        maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == 2).all(dim=1)
-        self._state[:, 0][maschera3] = 3
+        maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == self._state_3).all(dim=1)
+        self._state[:, :][maschera3] = self._state_4
         self._phase[:, 0][maschera3] = 0
-        maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == 3).all(dim=1)
-        self._state[:, 0][maschera4] = 0
+        maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == self._state_4).all(dim=1)
+        self._state[:, :][maschera4] = self._state_1
         self._phase[:, 0][maschera4] = 0
 
         #maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._phase > 0).all(dim=1) & (self._state == 0).all(dim=1)
@@ -491,14 +490,6 @@ class AnymalCEnv(DirectRLEnv):
         #maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._phase > 5).all(dim=1) & (self._state == 3).all(dim=1)
         #self._state[:, 0][maschera4] = 0
         #self._phase[:, 0][maschera4] = 0
-
-        #print(self.count_4)
-        #print(self._phase)
-
-
-
-        #print("State", self._state)
-        #print("Ok", self._ok)
 
         
 
@@ -520,20 +511,20 @@ class AnymalCEnv(DirectRLEnv):
         # interaction force
         interaction_force = self._contact_sensor.data.net_forces_w[:, self._interaction_ids].squeeze(dim=1)
         z_component = torch.abs(interaction_force[:, 1])
-        #z_component *= torch.cos(self.yaw[:, 0])
         self._forces[:,0] = z_component
         print(self._forces)
-        #print(self._robot.data.root_lin_vel_b)
         
         # interaction force buffer
         self._forces_buffer[:, :-1] = self._forces_buffer[:, 1:].clone()
-        self._forces_buffer[:, -1] = self._forces[:,0].squeeze()
+        self._forces_buffer[:, -1] = self._forces[:, 0].squeeze()
+
+        # velocity buffer
+        self._vel_buffer[:, :-1] = self._vel_buffer[:, 1:].clone()
+        self._vel_buffer[:, -1] = self._robot.data.root_lin_vel_b[:, 0].squeeze()
        
         self.count += 1
-        #print(self.count)
         self.t_list.append(self.count * (4/200))
         self.force_list.append(self._forces[0,0].item())
-        #self.force_list.append(self._phase[0,0].item())
         
 
         # force tracking
@@ -614,13 +605,27 @@ class AnymalCEnv(DirectRLEnv):
         # Sample new force commands
         #self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 10.0)
         self.a = 0.0
-        mae = torch.mean(torch.abs(self._forces_reference[0, 0] - self._forces_buffer[0, :]))
-        print("MAE: ", mae.item())
+
+        # Force MSE
+        mse = torch.mean((self._forces_reference[env_ids] - self._forces_buffer[env_ids])**2, dim=1)
+        mse = torch.sqrt(mse)
+        print(mse)
         self._forces_buffer[env_ids, :] = 0.0
+
+        ## Position MSE
+        #pos_mean = torch.mean(self._pos_buffer[:, :])
+        #pos_mse = torch.mean((pos_mean - self._pos_buffer)**2)
+        #print("Position MSE: ", pos_mse.item())
+        #self._pos_buffer[env_ids, :] = 0.0
+
+        ## Velocity MSE
+        #vel_mse = torch.mean((0.1 - self._vel_buffer[env_ids])**2)
+        #print("Velocity MSE: ", vel_mse.item())
+        self._vel_buffer[env_ids, :] = 0.0
 
         # Reward machines
         self._P[env_ids, :] = 0
-        self._state[env_ids, 0] = 1
+        self._state[env_ids, :] = self._state_1
         self._phase[env_ids, 0] = 0
         self._ok[env_ids, 0] = 0
         self._frequency[env_ids, 0] = 3
@@ -634,10 +639,9 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
 
-        cube_used = torch.tensor([0.0, -0.9, -0.1, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        cube_used = torch.tensor([0.0, -1.0, -0.1, 0.0, 0.0, 0.0, 0.0], device=self.device)
         self._cuboid.write_root_pose_to_sim(default_root_state[:, :7] + cube_used, env_ids)
 
-        self.count_4[env_ids, :] = 0
     
         # Logging
         extras = dict()
@@ -656,6 +660,13 @@ class AnymalCEnv(DirectRLEnv):
 
         # plot
         if (self.count > 10):
+            file_path = "/home/emanuele/metrics/force.txt"
+            with open(file_path, 'w') as file:
+                for value in mse:
+                    file.write(f"{value.item()}\n")
+
+
+
             plt.figure(figsize=(10, 8))
 
             # force plot

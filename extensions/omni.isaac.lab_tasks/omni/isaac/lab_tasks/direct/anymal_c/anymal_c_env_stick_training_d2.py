@@ -19,7 +19,7 @@ from omni.isaac.lab.markers.config import FRAME_MARKER_CFG
 from omni.isaac.lab.utils.math import subtract_frame_transforms
 import numpy as np
 # Pre-defined configs
-from omni.isaac.lab_assets.anymal import ANYMAL_STICK_F_CFG  # isort: skip
+from omni.isaac.lab_assets.anymal import ANYMAL_STICK_D_CFG  # isort: skip
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 
 
@@ -103,7 +103,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     events: EventCfg = EventCfg()
 
     # robot
-    robot: ArticulationCfg = ANYMAL_STICK_F_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    robot: ArticulationCfg = ANYMAL_STICK_D_CFG.replace(prim_path="/World/envs/env_.*/Robot")
     
     # sensors
     contact_sensor: ContactSensorCfg = ContactSensorCfg(
@@ -113,12 +113,12 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     cuboid_cfg: RigidObjectCfg = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Cuboid",
         spawn=sim_utils.CuboidCfg(
-            size=(0.5, 10.0, 1.0),
+            size=(10.0, 0.5, 1.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
                 compliant_contact_stiffness=100000,
-                compliant_contact_damping=1000,
+                compliant_contact_damping=500,
                 restitution=0.0,
             ),
             rigid_props=sim_utils.RigidBodyPropertiesCfg(
@@ -130,13 +130,13 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 0.6)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.85, -0.85, 0.5), rot=(0.92, 0.0, 0.0, 0.38)),
     )
 
 
     # reward scales
-    lin_vel_reward_scale_x = 1.5
-    lin_vel_reward_scale_y = 1.5
+    lin_vel_reward_scale_x = 3.0
+    lin_vel_reward_scale_y = 3.0
     z_vel_reward_scale = -2.0
     ang_vel_reward_scale = -0.05*3
     joint_torque_reward_scale = -2.5e-5
@@ -147,10 +147,10 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     undersired_contact_reward_scale = -1.0
     flat_orientation_reward_scale = -5.0*2
 
-    track_yaw = 1.5
+    track_yaw = 1.0
     track_force = 0.0
     track_force2 = 2.0
-    joint_deviation = -0.7
+    joint_deviation = -0.8
     energy = -0.00005
 
 
@@ -216,9 +216,9 @@ class AnymalCEnv(DirectRLEnv):
         self._extra_reward2 = torch.zeros(self.num_envs, 1, device=self.device)
         self._extra_reward3 = torch.zeros(self.num_envs, 1, device=self.device)
         self._transition_cost = torch.zeros(self.num_envs, 1, device=self.device)
-        self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
+        self._sequenza_target_1 = torch.tensor([1, 0, 1, 0], device=self.device)
         self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
+        self._sequenza_target_3 = torch.tensor([0, 1, 0, 1], device=self.device)
         self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
         
         
@@ -257,10 +257,11 @@ class AnymalCEnv(DirectRLEnv):
         self._forces_buffer = torch.zeros(self.num_envs, 200, device=self.device)
 
         self._level = torch.zeros(self.num_envs, 1, device=self.device)
+        self.percentage_at_max_level = 0.0
         self.max_level_unlocked = 1
+        self.unlock_threshold = 0.8
 
         self.count_int = 0
-        self.iteration = 0
 
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
@@ -293,11 +294,10 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        self._commands[:, 0] = 0.2
+        self._commands[:, 1] = 0.0
+        self._commands[:, 0] = 0.1
         mask_force__ = self._forces.squeeze(dim=1) > 0.0001
-        self._commands[mask_force__, 0] = 0.0
-
-        self._commands[:, 1] = 0.1
+        self._commands[mask_force__, 1] = 0.1
 
 
         self._previous_actions = self._actions.clone()
@@ -321,7 +321,6 @@ class AnymalCEnv(DirectRLEnv):
                     self._forces_reference,
                     self._P,
                     self._state,
-                    #self._phase,
                 )
                 if tensor is not None
             ],
@@ -468,9 +467,10 @@ class AnymalCEnv(DirectRLEnv):
 
         # interaction force
         interaction_force = self._contact_sensor.data.net_forces_w[:, self._interaction_ids].squeeze(dim=1)
-        z_component = torch.abs(interaction_force[:, 0])
-        #z_component *= torch.cos(self.yaw[:, 0])
-        self._forces[:,0] = z_component
+        x_component = torch.abs(interaction_force[:, 0])
+        y_component = torch.abs(interaction_force[:, 1])
+        d_component = (x_component + y_component) / 1.4142
+        self._forces[:,0] = d_component
 
         # interaction force buffer
         self._forces_buffer[:, :-1] = self._forces_buffer[:, 1:].clone()
@@ -515,14 +515,11 @@ class AnymalCEnv(DirectRLEnv):
 
         #mask_extra = (self._extra_reward > 0.5)
         #reward[mask_extra] *= 2.0
-        if (self.iteration < 10000):
-            self.iteration += 1
 
         if (self.count_int % 50 == 0):
             file_path = "/home/emanuele/reward.txt"
             with open(file_path, 'a') as file:
-                #file.write(f"{torch.mean(reward)}\n")
-                file.write(f"{self.iteration}\n")
+                file.write(f"Reward: {torch.mean(reward)}\n")
 
 
         # Logging
@@ -548,13 +545,12 @@ class AnymalCEnv(DirectRLEnv):
         self._actions[env_ids] = 0.0
         self._previous_actions[env_ids] = 0.0
         
-        # Sample new commands
+        # Sample new commands 
         self._commands[env_ids, 2] = 0.0
-        self._commands[env_ids,0] = 0.0
-        self._commands[env_ids,1] = 0.1
+        self._commands[env_ids,0] = 0.1
 
         # Sample new force commands
-        self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(40.0, 40.0)
+        self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(20.0, 60.0)
 
         # Reward machines
         self._P[env_ids, :] = 0
@@ -585,35 +581,27 @@ class AnymalCEnv(DirectRLEnv):
 
         # increase level
         num_at_max_level = (self._level[:, 0] == self.max_level_unlocked).sum().item()
-        percentage_at_max_level = num_at_max_level / 4096
+        self.percentage_at_max_level = num_at_max_level / 4096
 
         self._level[:, 0].clamp_(min=0, max=self.max_level_unlocked)
 
         row_min = self._forces_buffer[env_ids, :].min(dim=1).values
         row_max = self._forces_buffer[env_ids, :].max(dim=1).values
-        mae = torch.mean(torch.abs(self._forces_reference[env_ids[0], 0] - self._forces_buffer[env_ids[0], :]))
         if (self.count_int > 10000):
             self.count_int = 0        
         self.count_int += 1
         if (self.count_int % 10 == 0):
             file_path = "/home/emanuele/dati.txt"
             with open(file_path, 'w') as file:
-                file.write(f"Percentage_at_max_level: {percentage_at_max_level}\n")
+                file.write(f"Percentage_at_max_level: {self.percentage_at_max_level}\n")
                 file.write(f"Max_level_unlocked: {self.max_level_unlocked}\n")
                 file.write(f"Max: {row_max[0]}\n")
                 file.write(f"Min: {row_min[0]}\n")
-                file.write(f"MAE: {mae}\n")
     
-
-        cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
-
-        cube_pose = self._robot.data.default_root_state[env_ids]
-        cube_pose[:, :3] += self._terrain.env_origins[env_ids]
-        self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_used, env_ids)
-
 
         self._forces_buffer[env_ids, :] = 0.0
 
+        
         # Logging
         extras = dict()
         for key in self._episode_sums.keys():
