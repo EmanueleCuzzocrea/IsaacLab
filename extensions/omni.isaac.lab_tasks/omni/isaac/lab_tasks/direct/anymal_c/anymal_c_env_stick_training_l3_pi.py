@@ -18,9 +18,8 @@ from omni.isaac.lab.markers import VisualizationMarkers
 from omni.isaac.lab.markers.config import FRAME_MARKER_CFG
 from omni.isaac.lab.utils.math import subtract_frame_transforms
 import numpy as np
-from scipy.signal import butter, filtfilt
 # Pre-defined configs
-from omni.isaac.lab_assets.anymal import ANYMAL_STICK_F_CFG  # isort: skip
+from omni.isaac.lab_assets.anymal import ANYMAL_STICK_L_CFG  # isort: skip
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG  # isort: skip
 
 
@@ -48,50 +47,15 @@ class EventCfg:
         },
     )
 
-    # reset
     base_external_force_torque = EventTerm(
         func=mdp.apply_external_force_torque,
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "force_range": (-5.0, 5.0),
-            "torque_range": (-5.0, 5.0),
+            "force_range": (-10.0, 10.0),
+            "torque_range": (-10.0, 10.0),
         },
     )
-
-    #reset_base = EventTerm(
-    #    func=mdp.reset_root_state_uniform,
-    #    mode="reset",
-    #    params={
-    #        "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-    #        "velocity_range": {
-    #            "x": (-0.5, 0.5),
-    #            "y": (-0.5, 0.5),
-    #            "z": (-0.5, 0.5),
-    #            "roll": (-0.5, 0.5),
-    #            "pitch": (-0.5, 0.5),
-    #            "yaw": (-0.5, 0.5),
-    #        },
-    #    },
-    #)
-
-    #velocity_base = EventTerm(
-    #    func=mdp.push_by_setting_velocity,
-    #    mode="reset",
-    #    is_global_time=True,
-    #    interval_range_s=(0.0,0.0),
-    #    params={
-    #        "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #        "velocity_range": {
-    #            #"x": (0.0, 0.0),
-    #            #"y": (0., 0.0),
-    #            #"z": (-0.0, 0.0),
-    #            #"roll": (-0.0, 0.0),
-    #            #"pitch": (-0.0, 0.0),
-    #            #"yaw": (-0.0, 0.0),
-    #        },
-    #    },
-    #)
 
 
 @configclass
@@ -138,39 +102,40 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     events: EventCfg = EventCfg()
 
     # robot
-    robot: ArticulationCfg = ANYMAL_STICK_F_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    robot: ArticulationCfg = ANYMAL_STICK_L_CFG.replace(prim_path="/World/envs/env_.*/Robot")
     
     # sensors
     contact_sensor: ContactSensorCfg = ContactSensorCfg(
         prim_path="/World/envs/env_.*/Robot/.*", history_length=3, update_period=0.005, track_air_time=True, track_pose=True,
     )
 
-    chunk_4 = "\d\d\d[02468]"
     cuboid_cfg: RigidObjectCfg = RigidObjectCfg(
-        prim_path=f"/World/envs/env_{chunk_4}/Cuboid",
+        prim_path=f"/World/envs/env_.*/Cuboid",
         spawn=sim_utils.CuboidCfg(
-            size=(0.5, 10.0, 1.0),
+            size=(10.0, 0.5, 1.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
                 compliant_contact_stiffness=100000,
-                compliant_contact_damping=1000,
+                compliant_contact_damping=500,
                 restitution=0.0,
             ),
-            #rigid_props=sim_utils.RigidBodyPropertiesCfg(
-            #    disable_gravity=True,
-            #),
-            #mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(
+                max_linear_velocity=0.0,
+                max_angular_velocity=0.0,
+                disable_gravity=True,
+            ),
+            mass_props=sim_utils.MassPropertiesCfg(mass=10000.0),
             collision_props=sim_utils.CollisionPropertiesCfg(),
-            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1), metallic=0.2),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1)),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 0.5)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, -0.9, -10.0)),
     )
 
 
     # reward scales
-    lin_vel_reward_scale_x = 1.5
-    lin_vel_reward_scale_y = 1.5
+    lin_vel_reward_scale_x = 3.0
+    lin_vel_reward_scale_y = 3.0
     z_vel_reward_scale = -2.0
     ang_vel_reward_scale = -0.05*3
     joint_torque_reward_scale = -2.5e-5
@@ -181,10 +146,10 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     undersired_contact_reward_scale = -1.0
     flat_orientation_reward_scale = -5.0*2
 
-    track_yaw = 1.5
+    track_yaw = 2.0
     track_force = 0.0
-    track_force2 = 2.0
-    joint_deviation = -0.7
+    track_force2 = 0.0
+    joint_deviation = -1.5
     energy = -0.00005
 
 
@@ -242,7 +207,7 @@ class AnymalCEnv(DirectRLEnv):
 
         # Reward machines parameters
         self._P = torch.zeros(self.num_envs, 4, device=self.device)
-        self._state = torch.zeros(self.num_envs, 1, device=self.device)
+        self._state = torch.zeros(self.num_envs, 4, device=self.device)
         self._phase = torch.zeros(self.num_envs, 1, device=self.device)
         self._ok = torch.zeros(self.num_envs, 1, device=self.device)
         self._frequency = torch.zeros(self.num_envs, 1, device=self.device)
@@ -250,10 +215,15 @@ class AnymalCEnv(DirectRLEnv):
         self._extra_reward2 = torch.zeros(self.num_envs, 1, device=self.device)
         self._extra_reward3 = torch.zeros(self.num_envs, 1, device=self.device)
         self._transition_cost = torch.zeros(self.num_envs, 1, device=self.device)
-        self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
+        self._sequenza_target_1 = torch.tensor([1, 1, 0, 0], device=self.device)
         self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
+        self._sequenza_target_3 = torch.tensor([0, 0, 1, 1], device=self.device)
         self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
+
+        self._state_1 = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device)
+        self._state_2 = torch.tensor([0.0, 1.0, 0.0, 0.0], device=self.device)
+        self._state_3 = torch.tensor([0.0, 0.0, 1.0, 0.0], device=self.device)
+        self._state_4 = torch.tensor([0.0, 0.0, 0.0, 1.0], device=self.device)
         
         
 
@@ -288,17 +258,19 @@ class AnymalCEnv(DirectRLEnv):
         self.yaw = torch.zeros(self.num_envs, 1, device=self.device)
         self._forces = torch.zeros(self.num_envs, 1, device=self.device)
         self._forces_reference = torch.zeros(self.num_envs, 1, device=self.device)
-        self._forces_buffer = torch.zeros(self.num_envs, 15, device=self.device)
+        self._forces_buffer = torch.zeros(self.num_envs, 200, device=self.device)
 
-        self.count = 0.0
+        self.count = 0
+        self.learning_iteration = 0
+        self.mae = 0.0
         self.count_int = 0
-        self.t_min = 5
-        self.epsilon = 0.3
+        self.counter_vel = torch.zeros(self.num_envs, 1, device=self.device)
 
-        self.counter = torch.zeros(self.num_envs, 1, device=self.device)
-        self.count_4 = torch.zeros(self.num_envs, 1, device=self.device)
+        self._level = torch.zeros(self.num_envs, 1, device=self.device)
+        self.percentage_at_max_level = 0.0
+
+        self._integrator = torch.zeros(self.num_envs, 1, device=self.device)
         
-
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
         self.scene.articulations["robot"] = self._robot
@@ -330,39 +302,47 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        mask_p = (torch.arange(4096, device=self.device) >= 1000) & \
-            (torch.arange(4096, device=self.device) % 2 == 0)
-        mask_d = (torch.arange(4096, device=self.device) < 1000) | \
-            (torch.arange(4096, device=self.device) % 2 != 0)
+        if (self.learning_iteration < 835):
+            mask_p = (torch.arange(4096, device=self.device) >= 2000)
+            mask_d = (torch.arange(4096, device=self.device) < 2000)
 
-        self._commands[mask_p, 1] = 0.1
-        self._commands[mask_p, 0] = 0.2
-        mask_force__ = self._forces.squeeze(dim=1) > 0.0001
-        self._commands[mask_force__, 0] = 0.0
+            self._commands[mask_p, 0] = 0.1
+            self._integrator[:, 0] += 0.00005*(self._forces_reference[:, 0] - self._forces[:, 0])
+            self._integrator[:, 0].clamp_(min=-0.5, max=0.5)
+            self._commands[mask_p, 1] = -self._integrator[mask_p, 0]
 
-        self.counter[:, 0] += 1
+            self.counter_vel[:, 0] += 1
+            mask_change_vel_d = (self.counter_vel[:, 0] > 100) & mask_d
+            self.counter_vel[mask_change_vel_d, 0] = 0
+            self._commands[mask_change_vel_d, 0] = torch.zeros_like(self._commands[mask_change_vel_d, 0]).uniform_(-1.0, 1.0)
+            self._commands[mask_change_vel_d, 1] = torch.zeros_like(self._commands[mask_change_vel_d, 1]).uniform_(-1.0, 1.0)
 
-        mask_change_vel_d = (self.counter[:, 0] > 200) & mask_d
-        self.counter[mask_change_vel_d, 0] = 0
-        self._commands[mask_change_vel_d, 0] = torch.zeros_like(self._commands[mask_change_vel_d, 0]).uniform_(-1.0, 1.0)
-        self._commands[mask_change_vel_d, 1] = torch.zeros_like(self._commands[mask_change_vel_d, 1]).uniform_(-1.0, 1.0)
-     
+            #mask_change_vel_p = (self.counter_vel[:, 0] > 200) & mask_p
+            #self.counter_vel[mask_change_vel_p, 0] = 0
+            #self._forces_reference[mask_change_vel_p] = torch.zeros_like(self._forces_reference[mask_change_vel_p]).uniform_(20.0, 60.0)
+            
+            mask1 = (self._commands[:, 0] > 0.7)
+            self._commands[mask1, 0] = 0.0
+            mask2 = (self._commands[:, 0] < -0.7)
+            self._commands[mask2, 0] = 0.0
+            mask3 = (self._commands[:, 1] > 0.7)
+            self._commands[mask3, 1] = 0.0
+            mask4 = (self._commands[:, 1] < -0.7)
+            self._commands[mask4, 1] = 0.0
+
+            mask5 = (self._commands[:, 0] < 0.05) & (self._commands[:, 0] > -0.05)
+            self._commands[mask5, 0] = 0.0
+            mask6 = (self._commands[:, 1] < 0.05) & (self._commands[:, 1] > -0.05)
+            self._commands[mask6, 1] = 0.0
+        else:
+            self._commands[:, 0] = 0.1
+            self._integrator[:, 0] += 0.00005*(self._forces_reference[:, 0] - self._forces[:, 0])
+            self._integrator[:, 0].clamp_(min=-0.5, max=0.5)
+            self._commands[:, 1] = -self._integrator[:, 0]
+
         
-        mask1 = (self._commands[:, 0] > 0.7)
-        self._commands[mask1, 0] = 0.0
-        mask2 = (self._commands[:, 0] < -0.7)
-        self._commands[mask2, 0] = 0.0
-        mask3 = (self._commands[:, 1] > 0.7)
-        self._commands[mask3, 1] = 0.0
-        mask4 = (self._commands[:, 1] < -0.7)
-        self._commands[mask4, 1] = 0.0
-    
-        mask5 = (self._commands[:, 0] < 0.05) & (self._commands[:, 0] > -0.05)
-        self._commands[mask5, 0] = 0.0
-        mask6 = (self._commands[:, 1] < 0.05) & (self._commands[:, 1] > -0.05)
-        self._commands[mask6, 1] = 0.0
-
-
+        
+        
         self._previous_actions = self._actions.clone()
         height_data = None
         if isinstance(self.cfg, AnymalCRoughEnvCfg):
@@ -380,11 +360,8 @@ class AnymalCEnv(DirectRLEnv):
                     self._robot.data.joint_vel,
                     height_data,
                     self._actions,
-                    self._forces,
-                    self._forces_reference,
                     self._P,
                     self._state,
-                    #self._phase,
                 )
                 if tensor is not None
             ],
@@ -453,47 +430,47 @@ class AnymalCEnv(DirectRLEnv):
         self._transition_cost[:, 0] = 0
 
 
-        maschera1_1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._state == 0).all(dim=1)
-        self._state[:, 0][maschera1_1] = 1
+        maschera1_1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._state == self._state_1).all(dim=1)
+        self._state[:, :][maschera1_1] = self._state_2
         self._ok[:, 0][maschera1_1] = 0
         self._transition_cost[:, 0][maschera1_1] = 1
         self._phase[:, 0][maschera1_1] = 0
-        maschera1_ok = (self._P != self._sequenza_target_1).any(dim=1) & (self._state == 1).all(dim=1)
+        maschera1_ok = (self._P != self._sequenza_target_1).any(dim=1) & (self._state == self._state_2).all(dim=1)
         self._ok[:, 0][maschera1_ok] += 1
-        maschera1_2 = (self._P == self._sequenza_target_1).all(dim=1) & (self._state == 1).all(dim=1) & (self._ok < 1).all(dim=1)
+        maschera1_2 = (self._P == self._sequenza_target_1).all(dim=1) & (self._state == self._state_2).all(dim=1) & (self._ok < 1).all(dim=1)
         self._extra_reward3[:, 0][maschera1_2] = 1
 
 
-        maschera2_1 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 1).all(dim=1)
-        self._state[:, 0][maschera2_1] = 2
+        maschera2_1 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == self._state_2).all(dim=1)
+        self._state[:, :][maschera2_1] = self._state_3
         self._ok[:, 0][maschera2_1] = 0
         self._transition_cost[:, 0][maschera2_1] = 1
         self._phase[:, 0][maschera2_1] = 0
-        maschera2_ok = (self._P != self._sequenza_target_2).any(dim=1) & (self._state == 2).all(dim=1)
+        maschera2_ok = (self._P != self._sequenza_target_2).any(dim=1) & (self._state == self._state_3).all(dim=1)
         self._ok[:, 0][maschera2_ok] += 1
-        maschera2_2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == 2).all(dim=1) & (self._ok < 1).all(dim=1)
+        maschera2_2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == self._state_3).all(dim=1) & (self._ok < 1).all(dim=1)
         self._extra_reward2[:, 0][maschera2_2] = 1
 
 
-        maschera3_1 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == 2).all(dim=1)
-        self._state[:, 0][maschera3_1] = 3
+        maschera3_1 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == self._state_3).all(dim=1)
+        self._state[:, :][maschera3_1] = self._state_4
         self._ok[:, 0][maschera3_1] = 0
         self._transition_cost[:, 0][maschera3_1] = 1
         self._phase[:, 0][maschera3_1] = 0
-        maschera3_ok = (self._P != self._sequenza_target_3).any(dim=1) & (self._state == 3).all(dim=1)
+        maschera3_ok = (self._P != self._sequenza_target_3).any(dim=1) & (self._state == self._state_4).all(dim=1)
         self._ok[:, 0][maschera3_ok] += 1
-        maschera3_2 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == 3).all(dim=1) & (self._ok < 1).all(dim=1)
+        maschera3_2 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == self._state_4).all(dim=1) & (self._ok < 1).all(dim=1)
         self._extra_reward3[:, 0][maschera3_2] = 1
 
 
-        maschera4_1 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == 3).all(dim=1)
-        self._state[:, 0][maschera4_1] = 0
+        maschera4_1 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == self._state_4).all(dim=1)
+        self._state[:, :][maschera4_1] = self._state_1
         self._ok[:, 0][maschera4_1] = 0
         self._transition_cost[:, 0][maschera4_1] = 1
         self._phase[:, 0][maschera4_1] = 0
-        maschera4_ok = (self._P != self._sequenza_target_4).any(dim=1) & (self._state == 0).all(dim=1)
+        maschera4_ok = (self._P != self._sequenza_target_4).any(dim=1) & (self._state == self._state_1).all(dim=1)
         self._ok[:, 0][maschera4_ok] += 1
-        maschera4_2 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == 0).all(dim=1) & (self._ok < 1).all(dim=1)
+        maschera4_2 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == self._state_1).all(dim=1) & (self._ok < 1).all(dim=1)
         self._extra_reward2[:, 0][maschera4_2] = 1
 
 
@@ -534,9 +511,10 @@ class AnymalCEnv(DirectRLEnv):
 
         # interaction force
         interaction_force = self._contact_sensor.data.net_forces_w[:, self._interaction_ids].squeeze(dim=1)
-        z_component = torch.abs(interaction_force[:, 0])
-        #z_component *= torch.cos(self.yaw[:, 0])
-        self._forces[:,0] = z_component
+        y_component = torch.abs(interaction_force[:, 1])
+        self._forces[:,0] = y_component
+
+
 
 
         # interaction force buffer
@@ -574,27 +552,73 @@ class AnymalCEnv(DirectRLEnv):
             "joint_deviation": joint_deviation * self.cfg.joint_deviation * self.step_dt,
             "energy": energy * self.cfg.energy * self.step_dt,
         }
+        rewards2 = {
+            "track_lin_vel_x_exp": lin_vel_error_mapped_x * self.cfg.lin_vel_reward_scale_x * self.step_dt,
+            "track_lin_vel_y_exp": lin_vel_error_mapped_y * self.cfg.lin_vel_reward_scale_y * self.step_dt,
+            "track_yaw": yaw_error_mapped * self.cfg.track_yaw * self.step_dt,
+            "lin_vel_z_l2": z_vel_error * self.cfg.z_vel_reward_scale * self.step_dt,
+            "ang_vel_xy_l2": ang_vel_error * self.cfg.ang_vel_reward_scale * self.step_dt,
+            "dof_torques_l2": joint_torques * self.cfg.joint_torque_reward_scale * self.step_dt,
+            "dof_acc_l2": joint_accel * self.cfg.joint_accel_reward_scale * self.step_dt,
+            "dof_vel_l2": joint_vel * self.cfg.joint_vel_reward_scale * self.step_dt,
+            "action_rate_l2": action_rate * self.cfg.action_rate_reward_scale * self.step_dt,
+            "feet_air_time": air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
+            "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
+            "force_tracking": force_error * self.cfg.track_force * self.step_dt,
+            "force_tracking2": force_error_mapped * self.cfg.track_force2 * self.step_dt,
+            "energy": energy * self.cfg.energy * self.step_dt,
+        }
+        aaa = torch.sum(torch.stack(list(rewards.values())), dim=1)
+
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
+        reward2 = torch.sum(torch.stack(list(rewards2.values())), dim=0)
+
+        mask_force = self._forces[:,0] > 0.001
+        reward[mask_force] += 0.01
+        reward2[mask_force] += 0.01
 
         mask_extra3_ = (self._extra_reward3_ > 0.5)
         reward[mask_extra3_] *= 1.5
+        reward2[mask_extra3_] *= 1.5
 
         mask_extra2_ = (self._extra_reward2_ > 0.5)
         reward[mask_extra2_] *= 1.5
+        reward2[mask_extra2_] *= 1.5
         
         #mask_cost = (self._transition_cost_ > 0.5)
         #reward[mask_cost] /= 1.2
 
         #mask_extra = (self._extra_reward > 0.5)
         #reward[mask_extra] *= 2.0
+        
 
-        self.count_int += 1
-        if (self.count_int % 50 == 0):
-            file_path = "/home/emanuele/reward.txt"
-            with open(file_path, 'a') as file:
-                file.write(f"{torch.mean(reward)}\n")
-        if (self.count_int > 1000):
-            self.count_int = 0
+
+        if (self.count % 24 == 0):
+            reward_path = "/home/emanuele/reward.txt"
+            with open(reward_path, 'a') as file:
+                file.write(f"{torch.mean(reward2)}\n")
+            percentage_path = "/home/emanuele/percentage.txt"
+            with open(percentage_path, 'a') as file:
+                file.write(f"{self.percentage_at_max_level}\n")
+            self.learning_iteration += 1
+            mae_path = "/home/emanuele/mae.txt"
+            with open(mae_path, 'a') as file:
+                file.write(f"{self.mae}\n")
+
+            force_tracking2_path = "/home/emanuele/debug/force_tracking2.txt"
+            with open(force_tracking2_path, 'a') as file:
+                file.write(f"{aaa[13].item()}\n")
+            joint_deviation_path = "/home/emanuele/debug/joint_deviation.txt"
+            with open(joint_deviation_path, 'a') as file:
+                file.write(f"{aaa[14].item()}\n")
+            energy_path = "/home/emanuele/debug/energy.txt"
+            with open(energy_path, 'a') as file:
+                file.write(f"{aaa[15].item()}\n")
+        self.count += 1
+        if (self.count >= 60000):
+            self.count = 0
+        
 
         # Logging
         for key, value in rewards.items():
@@ -618,38 +642,23 @@ class AnymalCEnv(DirectRLEnv):
         self._actions[env_ids] = 0.0
         self._previous_actions[env_ids] = 0.0
 
-        dispari = env_ids[(env_ids % 2 != 0) | (env_ids < 1000)]
-        pari = env_ids[(env_ids % 2 == 0) & (env_ids > 999)]
+        dispari = env_ids[(env_ids < 2000)]
+        pari = env_ids[(env_ids >= 2000)]
         
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
-
-        yaw_ = random.uniform(0.0, 0.0)
-        self._commands[env_ids, 2] = yaw_
+        self._commands[env_ids, 2] = 0.0
             
-        self._commands[pari, 2] = 0.0
-        self._commands[pari,0] = 0.1
-        self._commands[pari,1] = 0.2
-
-
-        # Sample new force commands
-        self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(40.0, 40.0)
-        self._forces_buffer[env_ids, :] = 0.0
-
 
         # Reward machines
         self._P[env_ids, :] = 0
-        self._state[env_ids, 0] = 0
+        self._state[env_ids, :] = self._state_1
         self._phase[env_ids, 0] = 0
         self._ok[env_ids, 0] = 0
-        self._frequency[dispari, 0] = random.randint(1, 2)
-        self._frequency[pari, 0] = random.randint(1, 5)
 
         # change velocity
-        self.counter[env_ids, :] = 0
-        self.count_4[env_ids, :] = 0
+        self.counter_vel[env_ids, :] = 0
 
-      
         # Reset robot state
         joint_pos = self._robot.data.default_joint_pos[env_ids]
         joint_vel = self._robot.data.default_joint_vel[env_ids]
@@ -658,6 +667,75 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
+
+
+
+        # Curriculum learning
+        mask_level_up = (self._forces_buffer.min(dim=1).values > 1.0)
+        selected_mask_up = mask_level_up[env_ids]
+        self._level[env_ids[selected_mask_up], 0] += 1
+
+        mask_level_down = (self._forces_buffer.min(dim=1).values < 1.0)
+        selected_mask_down = mask_level_down[env_ids]
+        self._level[env_ids[selected_mask_down], 0] -= 1
+
+        # increase level
+        num_at_max_level = (self._level[:, 0] == 1).sum().item()
+        self.percentage_at_max_level = num_at_max_level / 4096
+
+        self._level[:, 0].clamp_(min=0, max=1)
+
+        row_max = self._forces_buffer[env_ids, :].max(dim=1).values
+        row_min = self._forces_buffer[env_ids, :].min(dim=1).values
+        #self.mae = torch.mean(torch.abs(self._forces_reference[pari] - self._forces_buffer[pari]))
+
+        if (self.count_int % 10 == 0):
+            file_path = "/home/emanuele/dati.txt"
+            with open(file_path, 'w') as file:
+                file.write(f"Percentage_at_max_level: {self.percentage_at_max_level}\n")
+                file.write(f"Max: {row_max[0]}\n")
+                file.write(f"Min: {row_min[0]}\n")
+                file.write(f"Force MAE: {self.mae}\n")
+                file.write(f"Learning iteration: {self.learning_iteration}\n")
+        self.count_int += 1
+        if (self.count_int >= 10000):
+            self.count_int = 0
+
+        #self._forces_reference[env_ids] = 0.0
+        if (self.learning_iteration < 835):
+            cube_used = torch.tensor([0.0, -0.9, 0.2, 0.0, 0.0, 0.0, 0.0], device=self.device)
+            cube_not_used = torch.tensor([0.0, -0.9, -10.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+            
+            cube_pose = self._robot.data.default_root_state[pari]
+            cube_pose[:, :3] += self._terrain.env_origins[pari]
+            self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_used, pari)
+
+            cube_pose = self._robot.data.default_root_state[dispari]
+            cube_pose[:, :3] += self._terrain.env_origins[dispari]
+            self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_not_used, dispari)
+
+            self.mae = torch.mean(torch.abs(self._forces_reference[pari] - self._forces_buffer[pari]))
+
+
+            #random_force = random.choice([10, 35, 60])
+            #self._forces_reference[pari] = random_force
+            self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 60.0)
+        else:
+            cube_used = torch.tensor([0.0, -0.9, 0.2, 0.0, 0.0, 0.0, 0.0], device=self.device)
+            cube_pose = self._robot.data.default_root_state[env_ids]
+            cube_pose[:, :3] += self._terrain.env_origins[env_ids]
+            self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_used, env_ids)
+
+            self.mae = torch.mean(torch.abs(self._forces_reference[env_ids] - self._forces_buffer[env_ids]))
+
+            #random_force = random.choice([10, 35, 60])
+            #self._forces_reference[env_ids] = random_force
+            self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 60.0)
+
+
+
+        self._forces_buffer[env_ids, :] = 0.0
+        self._integrator[env_ids, :] = 0.0
 
         # Logging
         extras = dict()

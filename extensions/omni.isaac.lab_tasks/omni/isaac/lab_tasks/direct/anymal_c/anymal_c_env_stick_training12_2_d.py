@@ -39,15 +39,15 @@ class EventCfg:
         },
     )
 
-    add_base_mass = EventTerm(
-        func=mdp.randomize_rigid_body_mass,
-        mode="reset",
-        params={
-            "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-            "mass_distribution_params": (-5.0, 5.0),
-            "operation": "add",
-        },
-    )
+    #add_base_mass = EventTerm(
+    #    func=mdp.randomize_rigid_body_mass,
+    #    mode="reset",
+    #    params={
+    #        "asset_cfg": SceneEntityCfg("robot", body_names="base"),
+    #        "mass_distribution_params": (-5.0, 5.0),
+    #        "operation": "add",
+    #    },
+    #)
 
     base_external_force_torque = EventTerm(
         func=mdp.apply_external_force_torque,
@@ -58,40 +58,6 @@ class EventCfg:
             "torque_range": (-0.1, 0.1),
         },
     )
-
-    #reset_base = EventTerm(
-    #    func=mdp.reset_root_state_uniform,
-    #    mode="reset",
-    #    params={
-    #        "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-    #        "velocity_range": {
-    #            "x": (-0.5, 0.5),
-    #            "y": (-0.5, 0.5),
-    #            "z": (-0.5, 0.5),
-    #            "roll": (-0.5, 0.5),
-    #            "pitch": (-0.5, 0.5),
-    #            "yaw": (-0.5, 0.5),
-    #        },
-    #    },
-    #)
-
-    #velocity_base = EventTerm(
-    #    func=mdp.push_by_setting_velocity,
-    #    mode="reset",
-    #    is_global_time=True,
-    #    interval_range_s=(0.0,0.0),
-    #    params={
-    #        "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #        "velocity_range": {
-    #            #"x": (0.0, 0.0),
-    #            #"y": (0., 0.0),
-    #            #"z": (-0.0, 0.0),
-    #            #"roll": (-0.0, 0.0),
-    #            #"pitch": (-0.0, 0.0),
-    #            #"yaw": (-0.0, 0.0),
-    #        },
-    #    },
-    #)
 
 
 @configclass
@@ -117,24 +83,9 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             restitution=0.0,
         ),
     )
-    #terrain = TerrainImporterCfg(
-    #    prim_path="/World/ground",
-    #    terrain_type="plane",
-    #    collision_group=-1,
-    #    physics_material=sim_utils.RigidBodyMaterialCfg(
-    #        friction_combine_mode="multiply",
-    #        restitution_combine_mode="multiply",
-    #        static_friction=1.0,
-    #        dynamic_friction=1.0,
-    #        restitution=0.0,
-    #    ),
-    #    debug_vis=False,
-    #)
-
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
-        terrain_type="generator",
-        terrain_generator=ROUGH_TERRAINS_CFG2,
+        terrain_type="plane",
         collision_group=-1,
         physics_material=sim_utils.RigidBodyMaterialCfg(
             friction_combine_mode="multiply",
@@ -143,17 +94,32 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             dynamic_friction=1.0,
             restitution=0.0,
         ),
-        visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.3, 0.3, 0.3)),
-        #visual_material=sim_utils.MdlFileCfg(
-        #    mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
-        #    project_uvw=True,
-        #    texture_scale=(0.25, 0.25),
-        #),
         debug_vis=False,
     )
 
+    #terrain = TerrainImporterCfg(
+    #    prim_path="/World/ground",
+    #    terrain_type="generator",
+    #    terrain_generator=ROUGH_TERRAINS_CFG2,
+    #    collision_group=-1,
+    #    physics_material=sim_utils.RigidBodyMaterialCfg(
+    #        friction_combine_mode="multiply",
+    #        restitution_combine_mode="multiply",
+    #        static_friction=1.0,
+    #        dynamic_friction=1.0,
+    #        restitution=0.0,
+    #    ),
+    #    visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.3, 0.3, 0.3)),
+    #    #visual_material=sim_utils.MdlFileCfg(
+    #    #    mdl_path=f"{ISAACLAB_NUCLEUS_DIR}/Materials/TilesMarbleSpiderWhiteBrickBondHoned/TilesMarbleSpiderWhiteBrickBondHoned.mdl",
+    #    #    project_uvw=True,
+    #    #    texture_scale=(0.25, 0.25),
+    #    #),
+    #    debug_vis=False,
+    #)
+
     # scene
-    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=4.0, replicate_physics=True)
+    scene: InteractiveSceneCfg = InteractiveSceneCfg(num_envs=4096, env_spacing=0.0, replicate_physics=True)
 
     # events
     events: EventCfg = EventCfg()
@@ -352,7 +318,7 @@ class AnymalCEnv(DirectRLEnv):
         self.scene.clone_environments(copy_from_source=False)
         self.scene.filter_collisions(global_prim_paths=[self.cfg.terrain.prim_path])
         # add lights
-        light_cfg = sim_utils.DomeLightCfg(intensity=750.0, texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",)
+        light_cfg = sim_utils.DomeLightCfg(intensity=1500.0)#, texture_file=f"{ISAAC_NUCLEUS_DIR}/Materials/Textures/Skies/PolyHaven/kloofendal_43d_clear_puresky_4k.hdr",)
         light_cfg.func("/World/Light", light_cfg)
 
         # Cuboid
@@ -369,11 +335,11 @@ class AnymalCEnv(DirectRLEnv):
         self.a += 0.0005*(50.0 - self._forces[0,0].item())
         self._forces_reference[:, 0] = 40.0
         if (self._forces[0,0].item() > 0.0001):
-            self._commands[:, 0] = 0.1
-            self._commands[:, 1] = 0.1
+            self._commands[:, 0] = 0.07
+            self._commands[:, 1] = 0.07
         else:
-            self._commands[:, 0] = 0.2
-            self._commands[:, 1] = 0.1
+            self._commands[:, 0] = 0.21
+            self._commands[:, 1] = -0.07
         self._commands[:, 2] = 0.0
         
         self._previous_actions = self._actions.clone()
@@ -393,7 +359,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._robot.data.joint_vel,
                     height_data,
                     self._actions,
-                    self._forces,
+                    #self._forces,
                     self._forces_reference,
                     self._P,
                     self._state,

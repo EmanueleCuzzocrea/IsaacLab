@@ -215,9 +215,9 @@ class AnymalCEnv(DirectRLEnv):
         self._extra_reward2 = torch.zeros(self.num_envs, 1, device=self.device)
         self._extra_reward3 = torch.zeros(self.num_envs, 1, device=self.device)
         self._transition_cost = torch.zeros(self.num_envs, 1, device=self.device)
-        self._sequenza_target_1 = torch.tensor([1, 0, 1, 0], device=self.device)
+        self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
         self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([0, 1, 0, 1], device=self.device)
+        self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
         self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
 
         self._state_1 = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device)
@@ -260,16 +260,16 @@ class AnymalCEnv(DirectRLEnv):
         self._forces_reference = torch.zeros(self.num_envs, 1, device=self.device)
         self._forces_buffer = torch.zeros(self.num_envs, 200, device=self.device)
 
+        self.count = 0
+        self.learning_iteration = 0
+        self.mae = 0.0
         self.count_int = 0
         self.counter_vel = torch.zeros(self.num_envs, 1, device=self.device)
-        self.iteration = 0
 
         self._level = torch.zeros(self.num_envs, 1, device=self.device)
-        self.max_level_unlocked = 1
+        self.percentage_at_max_level = 0.0
 
         self._integrator = torch.zeros(self.num_envs, 1, device=self.device)
-        self._proportional = torch.zeros(self.num_envs, 1, device=self.device)
-
 
     def _setup_scene(self):
         self._robot = Articulation(self.cfg.robot)
@@ -302,18 +302,14 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        if (self.iteration < 20000):
+        if (self.learning_iteration < 800):
             mask_p = (torch.arange(4096, device=self.device) >= 2000)
             mask_d = (torch.arange(4096, device=self.device) < 2000)
 
+            self._commands[mask_p, 1] = 0.1
             self._integrator[:, 0] += 0.00005*(self._forces_reference[:, 0] - self._forces[:, 0])
             self._integrator[:, 0].clamp_(min=-0.5, max=0.5)
-            self._proportional[:, 0] = 0.002*(self._forces_reference[:, 0] - self._forces[:, 0])
-            self._proportional[:, 0].clamp_(min=-0.5, max=0.5)
-
-            self._commands[mask_p, 1] = 0.1
-            mask_integrator = self._integrator[:, 0] > 0.001
-            self._commands[mask_integrator, 0] = self._integrator[mask_integrator, 0]# + self._proportional[mask_integrator, 0]
+            self._commands[mask_p, 0] = self._integrator[mask_p, 0]
 
             self.counter_vel[:, 0] += 1
             mask_change_vel_d = (self.counter_vel[:, 0] > 100) & mask_d
@@ -336,14 +332,13 @@ class AnymalCEnv(DirectRLEnv):
             mask6 = (self._commands[:, 1] < 0.05) & (self._commands[:, 1] > -0.05)
             self._commands[mask6, 1] = 0.0
         else:
+            self._commands[:, 1] = 0.1
             self._integrator[:, 0] += 0.00005*(self._forces_reference[:, 0] - self._forces[:, 0])
             self._integrator[:, 0].clamp_(min=-0.5, max=0.5)
-            self._proportional[:, 0] = 0.002*(self._forces_reference[:, 0] - self._forces[:, 0])
-            self._proportional[:, 0].clamp_(min=-0.5, max=0.5)
+            self._commands[:, 0] = self._integrator[:, 0]
 
-            self._commands[:, 1] = 0.1
-            self._commands[:, 0] = self._integrator[:, 0]# + self._proportional[:, 0]
-
+        
+        
         
         self._previous_actions = self._actions.clone()
         height_data = None
@@ -516,10 +511,14 @@ class AnymalCEnv(DirectRLEnv):
         x_component = torch.abs(interaction_force[:, 0])
         self._forces[:, 0] = x_component
 
+        
+        
+        
         # interaction force buffer
         self._forces_buffer[:, :-1] = self._forces_buffer[:, 1:].clone()
         self._forces_buffer[:, -1] = self._forces[:,0].squeeze()
 
+        
         # force tracking
         force_error = torch.square(self._forces_reference[:, 0] - self._forces[:, 0])
         force_error_mapped = torch.exp(-force_error / 25)
@@ -550,17 +549,40 @@ class AnymalCEnv(DirectRLEnv):
             "joint_deviation": joint_deviation * self.cfg.joint_deviation * self.step_dt,
             "energy": energy * self.cfg.energy * self.step_dt,
         }
+        rewards2 = {
+            "track_lin_vel_x_exp": lin_vel_error_mapped_x * self.cfg.lin_vel_reward_scale_x * self.step_dt,
+            "track_lin_vel_y_exp": lin_vel_error_mapped_y * self.cfg.lin_vel_reward_scale_y * self.step_dt,
+            "track_yaw": yaw_error_mapped * self.cfg.track_yaw * self.step_dt,
+            "lin_vel_z_l2": z_vel_error * self.cfg.z_vel_reward_scale * self.step_dt,
+            "ang_vel_xy_l2": ang_vel_error * self.cfg.ang_vel_reward_scale * self.step_dt,
+            "dof_torques_l2": joint_torques * self.cfg.joint_torque_reward_scale * self.step_dt,
+            "dof_acc_l2": joint_accel * self.cfg.joint_accel_reward_scale * self.step_dt,
+            "dof_vel_l2": joint_vel * self.cfg.joint_vel_reward_scale * self.step_dt,
+            "action_rate_l2": action_rate * self.cfg.action_rate_reward_scale * self.step_dt,
+            "feet_air_time": air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
+            "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
+            "force_tracking": force_error * self.cfg.track_force * self.step_dt,
+            "force_tracking2": force_error_mapped * self.cfg.track_force2 * self.step_dt,
+            "energy": energy * self.cfg.energy * self.step_dt,
+        }
+        aaa = torch.sum(torch.stack(list(rewards.values())), dim=1)
+
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
+        reward2 = torch.sum(torch.stack(list(rewards2.values())), dim=0)
 
         mask_force = self._forces[:,0] > 0.001
         reward[mask_force] += 0.02
+        reward2[mask_force] += 0.02
 
         mask_extra3_ = (self._extra_reward3_ > 0.5)
         reward[mask_extra3_] *= 1.5
+        reward2[mask_extra3_] *= 1.5
 
         mask_extra2_ = (self._extra_reward2_ > 0.5)
         reward[mask_extra2_] *= 1.5
-        
+        reward2[mask_extra2_] *= 1.5
+
         #mask_cost = (self._transition_cost_ > 0.5)
         #reward[mask_cost] /= 1.2
 
@@ -568,14 +590,29 @@ class AnymalCEnv(DirectRLEnv):
         #reward[mask_extra] *= 2.0
         
         
-        if (self.iteration < 20000):
-            self.iteration += 1
 
-        
-        if (self.count_int % 50 == 0):
-            file_path = "/home/emanuele/reward.txt"
-            with open(file_path, 'a') as file:
-                file.write(f"{torch.mean(reward)}\n")
+
+        if (self.count % 24 == 0):
+            reward_path = "/home/emanuele/reward.txt"
+            with open(reward_path, 'a') as file:
+                file.write(f"{torch.mean(reward2)}\n")
+            percentage_path = "/home/emanuele/percentage.txt"
+            with open(percentage_path, 'a') as file:
+                file.write(f"{self.percentage_at_max_level}\n")
+            self.learning_iteration += 1
+
+            force_tracking2_path = "/home/emanuele/debug/force_tracking2.txt"
+            with open(force_tracking2_path, 'a') as file:
+                file.write(f"{aaa[13].item()}\n")
+            joint_deviation_path = "/home/emanuele/debug/joint_deviation.txt"
+            with open(joint_deviation_path, 'a') as file:
+                file.write(f"{aaa[14].item()}\n")
+            energy_path = "/home/emanuele/debug/energy.txt"
+            with open(energy_path, 'a') as file:
+                file.write(f"{aaa[15].item()}\n")
+        self.count += 1
+        if (self.count >= 60000):
+            self.count = 0
         
 
         # Logging
@@ -605,9 +642,7 @@ class AnymalCEnv(DirectRLEnv):
         
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-1.0, 1.0)
-
-        yaw_ = random.uniform(0.0, 0.0)
-        self._commands[env_ids, 2] = yaw_
+        self._commands[env_ids, 2] = 0.0
  
 
         # Reward machines
@@ -615,8 +650,6 @@ class AnymalCEnv(DirectRLEnv):
         self._state[env_ids, :] = self._state_1
         self._phase[env_ids, 0] = 0
         self._ok[env_ids, 0] = 0
-        self._frequency[dispari, 0] = random.randint(1, 2)
-        self._frequency[pari, 0] = random.randint(1, 5)
 
         # change velocity
         self.counter_vel[env_ids, :] = 0
@@ -642,30 +675,29 @@ class AnymalCEnv(DirectRLEnv):
         self._level[env_ids[selected_mask_down], 0] -= 1
 
         # increase level
-        num_at_max_level = (self._level[:, 0] == self.max_level_unlocked).sum().item()
-        percentage_at_max_level = num_at_max_level / 4096
+        num_at_max_level = (self._level[:, 0] == 1).sum().item()
+        self.percentage_at_max_level = num_at_max_level / 4096
 
-        self._level[:, 0].clamp_(min=0, max=self.max_level_unlocked)
+        self._level[:, 0].clamp_(min=0, max=1)
 
         row_min = self._forces_buffer[env_ids, :].min(dim=1).values
         row_max = self._forces_buffer[env_ids, :].max(dim=1).values
-        mae = torch.mean(torch.abs(self._forces_reference[env_ids] - self._forces_buffer[env_ids]))
+        self.mae = torch.mean(torch.abs(self._forces_reference[pari] - self._forces_buffer[pari]))
 
-        self.count_int += 1
         if (self.count_int % 10 == 0):
             file_path = "/home/emanuele/dati.txt"
             with open(file_path, 'w') as file:
-                file.write(f"Percentage_at_max_level: {percentage_at_max_level}\n")
-                file.write(f"Max_level_unlocked: {self.max_level_unlocked}\n")
+                file.write(f"Percentage_at_max_level: {self.percentage_at_max_level}\n")
                 file.write(f"Max: {row_max[0]}\n")
                 file.write(f"Min: {row_min[0]}\n")
-                file.write(f"Force MAE: {mae}\n")
-                file.write(f"Iteration: {self.iteration}\n")
-        if (self.count_int > 1000):
+                file.write(f"Force MAE: {self.mae}\n")
+                file.write(f"Iteration: {self.learning_iteration}\n")
+        self.count_int += 1
+        if (self.count_int >= 10000):
             self.count_int = 0
 
         self._forces_reference[env_ids] = 0.0
-        if (self.iteration < 20000):
+        if (self.learning_iteration < 800):
             cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
             cube_not_used = torch.tensor([1.15, 0.0, -10.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
             
@@ -677,14 +709,16 @@ class AnymalCEnv(DirectRLEnv):
             cube_pose[:, :3] += self._terrain.env_origins[dispari]
             self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_not_used, dispari)
 
-            self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(20.0, 60.0)
+            random_force = random.choice([20, 40, 60])
+            self._forces_reference[pari] = random_force
         else:
             cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
             cube_pose = self._robot.data.default_root_state[env_ids]
             cube_pose[:, :3] += self._terrain.env_origins[env_ids]
             self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_used, env_ids)
 
-            self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(20.0, 60.0)
+            random_force = random.choice([20, 40, 60])
+            self._forces_reference[env_ids] = random_force
 
 
 

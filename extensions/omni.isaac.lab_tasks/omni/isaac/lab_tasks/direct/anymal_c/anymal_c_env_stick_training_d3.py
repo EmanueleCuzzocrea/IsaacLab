@@ -149,7 +149,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     track_yaw = 1.0
     track_force = 0.0
     track_force2 = 2.0
-    joint_deviation = -1.0
+    joint_deviation = -0.8
     energy = -0.00005
 
 
@@ -215,10 +215,10 @@ class AnymalCEnv(DirectRLEnv):
         self._extra_reward2 = torch.zeros(self.num_envs, 1, device=self.device)
         self._extra_reward3 = torch.zeros(self.num_envs, 1, device=self.device)
         self._transition_cost = torch.zeros(self.num_envs, 1, device=self.device)
-        self._sequenza_target_1 = torch.tensor([0, 1, 1, 1], device=self.device)
-        self._sequenza_target_2 = torch.tensor([1, 0, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([1, 1, 0, 1], device=self.device)
-        self._sequenza_target_4 = torch.tensor([1, 1, 1, 0], device=self.device)
+        self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
+        self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
+        self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
+        self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
 
         self._state_1 = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device)
         self._state_2 = torch.tensor([0.0, 1.0, 0.0, 0.0], device=self.device)
@@ -301,7 +301,7 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        if (self.learning_iteration < 1000):
+        if (self.learning_iteration < 800):
             mask_p = (torch.arange(4096, device=self.device) >= 2000)
             mask_d = (torch.arange(4096, device=self.device) < 2000)
 
@@ -312,7 +312,6 @@ class AnymalCEnv(DirectRLEnv):
             self._commands[mask_force__, 1] = 0.07
 
             self.counter_vel[:, 0] += 1
-
             mask_change_vel_d = (self.counter_vel[:, 0] > 200) & mask_d
             self.counter_vel[mask_change_vel_d, 0] = 0
             self._commands[mask_change_vel_d, 0] = torch.zeros_like(self._commands[mask_change_vel_d, 0]).uniform_(-1.0, 1.0)
@@ -357,7 +356,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._robot.data.joint_vel,
                     height_data,
                     self._actions,
-                    self._forces,
+                    #self._forces,
                     self._forces_reference,
                     self._P,
                     self._state,
@@ -401,7 +400,7 @@ class AnymalCEnv(DirectRLEnv):
         # joint velocity
         joint_vel = torch.sum(torch.square(self._robot.data.joint_vel), dim=1)
         # energy
-        energy = torch.sum(torch.square(self._robot.data.applied_torque * self._robot.data.joint_vel), dim=1)
+        energy = torch.sum(torch.abs(self._robot.data.applied_torque * self._robot.data.joint_vel), dim=1)
         # action rate
         action_rate = torch.sum(torch.square(self._actions - self._previous_actions), dim=1)
         # feet air time
@@ -531,7 +530,7 @@ class AnymalCEnv(DirectRLEnv):
 
         # joint deviation
         deviation = self._robot.data.joint_pos - self._robot.data.default_joint_pos
-        joint_deviation = torch.sum(torch.square(deviation), dim=1)
+        joint_deviation = torch.sum(torch.abs(deviation), dim=1)
 
         rewards = {
             "track_lin_vel_x_exp": lin_vel_error_mapped_x * self.cfg.lin_vel_reward_scale_x * self.step_dt,
@@ -551,13 +550,35 @@ class AnymalCEnv(DirectRLEnv):
             "joint_deviation": joint_deviation * self.cfg.joint_deviation * self.step_dt,
             "energy": energy * self.cfg.energy * self.step_dt,
         }
+        rewards2 = {
+            "track_lin_vel_x_exp": lin_vel_error_mapped_x * self.cfg.lin_vel_reward_scale_x * self.step_dt,
+            "track_lin_vel_y_exp": lin_vel_error_mapped_y * self.cfg.lin_vel_reward_scale_y * self.step_dt,
+            "track_yaw": yaw_error_mapped * self.cfg.track_yaw * self.step_dt,
+            "lin_vel_z_l2": z_vel_error * self.cfg.z_vel_reward_scale * self.step_dt,
+            "ang_vel_xy_l2": ang_vel_error * self.cfg.ang_vel_reward_scale * self.step_dt,
+            "dof_torques_l2": joint_torques * self.cfg.joint_torque_reward_scale * self.step_dt,
+            "dof_acc_l2": joint_accel * self.cfg.joint_accel_reward_scale * self.step_dt,
+            "dof_vel_l2": joint_vel * self.cfg.joint_vel_reward_scale * self.step_dt,
+            "action_rate_l2": action_rate * self.cfg.action_rate_reward_scale * self.step_dt,
+            "feet_air_time": air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
+            "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
+            "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
+            "force_tracking": force_error * self.cfg.track_force * self.step_dt,
+            "force_tracking2": force_error_mapped * self.cfg.track_force2 * self.step_dt,
+            "energy": energy * self.cfg.energy * self.step_dt,
+        }
+        aaa = torch.sum(torch.stack(list(rewards.values())), dim=1)
+
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
+        reward2 = torch.sum(torch.stack(list(rewards2.values())), dim=0)
 
         mask_extra3_ = (self._extra_reward3_ > 0.5)
         reward[mask_extra3_] *= 1.5
+        reward2[mask_extra3_] *= 1.5
 
         mask_extra2_ = (self._extra_reward2_ > 0.5)
         reward[mask_extra2_] *= 1.5
+        reward2[mask_extra2_] *= 1.5
         
         #mask_cost = (self._transition_cost_ > 0.5)
         #reward[mask_cost] /= 1.2
@@ -571,20 +592,21 @@ class AnymalCEnv(DirectRLEnv):
         if (self.count % 24 == 0):
             reward_path = "/home/emanuele/reward.txt"
             with open(reward_path, 'a') as file:
-                file.write(f"{torch.mean(reward)}\n")
-            std_path = "/home/emanuele/std.txt"
-            with open(std_path, 'a') as file:
-                file.write(f"{torch.std(reward)}\n")
+                file.write(f"{torch.mean(reward2)}\n")
             percentage_path = "/home/emanuele/percentage.txt"
             with open(percentage_path, 'a') as file:
                 file.write(f"{self.percentage_at_max_level}\n")
-            mae_path = "/home/emanuele/mae.txt"
-            with open(mae_path, 'a') as file:
-                file.write(f"{self.mae}\n")
-            iteration_path = "/home/emanuele/iteration.txt"
-            with open(iteration_path, 'a') as file:
-                file.write(f"{self.learning_iteration}\n")
             self.learning_iteration += 1
+
+            force_tracking2_path = "/home/emanuele/debug/force_tracking2.txt"
+            with open(force_tracking2_path, 'a') as file:
+                file.write(f"{aaa[13].item()}\n")
+            joint_deviation_path = "/home/emanuele/debug/joint_deviation.txt"
+            with open(joint_deviation_path, 'a') as file:
+                file.write(f"{aaa[14].item()}\n")
+            energy_path = "/home/emanuele/debug/energy.txt"
+            with open(energy_path, 'a') as file:
+                file.write(f"{aaa[15].item()}\n")
         self.count += 1
         if (self.count >= 60000):
             self.count = 0
@@ -672,7 +694,7 @@ class AnymalCEnv(DirectRLEnv):
             self.count_int = 0
 
         self._forces_reference[env_ids] = 0.0
-        if (self.learning_iteration < 1000):
+        if (self.learning_iteration < 800):
             cube_used = torch.tensor([0.85, -0.85, 0.0, 0.0, 0.0, 0.0, 0.415], device=self.device)
             cube_not_used = torch.tensor([0.85, -0.85, -10.0, 0.0, 0.0, 0.0, 0.415], device=self.device)
             

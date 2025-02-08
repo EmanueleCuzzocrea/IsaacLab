@@ -129,7 +129,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1)),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, -1.0, -10.0)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, -0.9, -10.0)),
     )
 
 
@@ -215,10 +215,10 @@ class AnymalCEnv(DirectRLEnv):
         self._extra_reward2 = torch.zeros(self.num_envs, 1, device=self.device)
         self._extra_reward3 = torch.zeros(self.num_envs, 1, device=self.device)
         self._transition_cost = torch.zeros(self.num_envs, 1, device=self.device)
-        self._sequenza_target_1 = torch.tensor([0, 1, 1, 1], device=self.device)
-        self._sequenza_target_2 = torch.tensor([1, 0, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([1, 1, 0, 1], device=self.device)
-        self._sequenza_target_4 = torch.tensor([1, 1, 1, 0], device=self.device)
+        self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
+        self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
+        self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
+        self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
 
         self._state_1 = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device)
         self._state_2 = torch.tensor([0.0, 1.0, 0.0, 0.0], device=self.device)
@@ -301,17 +301,16 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        if (self.learning_iteration < 500):
+        if (self.learning_iteration < 800):
             mask_p = (torch.arange(4096, device=self.device) >= 2000)
             mask_d = (torch.arange(4096, device=self.device) < 2000)
 
             self._commands[mask_p, 0] = 0.1
-            self._commands[mask_p, 1] = -0.2
+            self._commands[mask_p, 1] = -0.1
             mask_force__ = self._forces.squeeze(dim=1) > 0.0001
             self._commands[mask_force__, 1] = 0.0
 
             self.counter_vel[:, 0] += 1
-
             mask_change_vel_d = (self.counter_vel[:, 0] > 200) & mask_d
             self.counter_vel[mask_change_vel_d, 0] = 0
             self._commands[mask_change_vel_d, 0] = torch.zeros_like(self._commands[mask_change_vel_d, 0]).uniform_(-1.0, 1.0)
@@ -333,10 +332,12 @@ class AnymalCEnv(DirectRLEnv):
             self._commands[mask6, 1] = 0.0
         else:
             self._commands[:, 0] = 0.1
-            self._commands[:, 1] = -0.2
+            self._commands[:, 1] = -0.1
             mask_force__ = self._forces.squeeze(dim=1) > 0.0001
             self._commands[mask_force__, 1] = 0.0
 
+        
+        
         
         self._previous_actions = self._actions.clone()
         height_data = None
@@ -355,7 +356,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._robot.data.joint_vel,
                     height_data,
                     self._actions,
-                    self._forces,
+                    #self._forces,
                     self._forces_reference,
                     self._P,
                     self._state,
@@ -366,8 +367,6 @@ class AnymalCEnv(DirectRLEnv):
         )
         observations = {"policy": obs}
         return observations
-
-
 
     def _get_rewards(self) -> torch.Tensor:        
         # yaw tracking
@@ -594,20 +593,10 @@ class AnymalCEnv(DirectRLEnv):
             reward_path = "/home/emanuele/reward.txt"
             with open(reward_path, 'a') as file:
                 file.write(f"{torch.mean(reward2)}\n")
-            #std_path = "/home/emanuele/std.txt"
-            #with open(std_path, 'a') as file:
-            #    file.write(f"{torch.std(reward)}\n")
             percentage_path = "/home/emanuele/percentage.txt"
             with open(percentage_path, 'a') as file:
                 file.write(f"{self.percentage_at_max_level}\n")
-            #mae_path = "/home/emanuele/mae.txt"
-            #with open(mae_path, 'a') as file:
-            #    file.write(f"{self.mae}\n")
-            #iteration_path = "/home/emanuele/iteration.txt"
-            #with open(iteration_path, 'a') as file:
-            #    file.write(f"{self.learning_iteration}\n")
             self.learning_iteration += 1
-
 
             force_tracking2_path = "/home/emanuele/debug/force_tracking2.txt"
             with open(force_tracking2_path, 'a') as file:
@@ -705,9 +694,9 @@ class AnymalCEnv(DirectRLEnv):
             self.count_int = 0
 
         self._forces_reference[env_ids] = 0.0
-        if (self.learning_iteration < 500):
-            cube_used = torch.tensor([0.0, -1.0, 0.2, 0.0, 0.0, 0.0, 0.0], device=self.device)
-            cube_not_used = torch.tensor([0.0, -1.0, -10.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        if (self.learning_iteration < 800):
+            cube_used = torch.tensor([0.0, -0.9, 0.2, 0.0, 0.0, 0.0, 0.0], device=self.device)
+            cube_not_used = torch.tensor([0.0, -0.9, -10.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
             
             cube_pose = self._robot.data.default_root_state[pari]
             cube_pose[:, :3] += self._terrain.env_origins[pari]
@@ -717,15 +706,15 @@ class AnymalCEnv(DirectRLEnv):
             cube_pose[:, :3] += self._terrain.env_origins[dispari]
             self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_not_used, dispari)
 
-            random_force = random.choice([20, 40, 60])
+            random_force = random.choice([10])
             self._forces_reference[pari] = random_force
         else:
-            cube_used = torch.tensor([0.0, -1.0, 0.2, 0.0, 0.0, 0.0, 0.0], device=self.device)
+            cube_used = torch.tensor([0.0, -0.9, 0.2, 0.0, 0.0, 0.0, 0.0], device=self.device)
             cube_pose = self._robot.data.default_root_state[env_ids]
             cube_pose[:, :3] += self._terrain.env_origins[env_ids]
             self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_used, env_ids)
 
-            random_force = random.choice([20, 40, 60])
+            random_force = random.choice([10])
             self._forces_reference[env_ids] = random_force
 
 

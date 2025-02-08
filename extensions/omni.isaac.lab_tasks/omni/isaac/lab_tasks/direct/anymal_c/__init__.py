@@ -18,7 +18,7 @@ from . import agents
 #from .anymal_c_env_stick_training10 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
 #from .anymal_c_env_stick_training11 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
 #from .anymal_c_env_stick_training12 import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
-from .anymal_c_env_stick_training12_2_pi import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
+from .anymal_c_env_stick_training_l3_pi import AnymalCEnv, AnymalCFlatEnvCfg, AnymalCRoughEnvCfg
 
 # Register Gym environments.
 

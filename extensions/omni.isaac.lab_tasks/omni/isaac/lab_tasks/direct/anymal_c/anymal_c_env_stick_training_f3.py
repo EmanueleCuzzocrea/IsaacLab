@@ -301,7 +301,7 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        if (self.learning_iteration < 500):
+        if (self.learning_iteration < 800):
             mask_p = (torch.arange(4096, device=self.device) >= 2000)
             mask_d = (torch.arange(4096, device=self.device) < 2000)
 
@@ -311,7 +311,6 @@ class AnymalCEnv(DirectRLEnv):
             self._commands[mask_force__, 0] = 0.0
 
             self.counter_vel[:, 0] += 1
-
             mask_change_vel_d = (self.counter_vel[:, 0] > 200) & mask_d
             self.counter_vel[mask_change_vel_d, 0] = 0
             self._commands[mask_change_vel_d, 0] = torch.zeros_like(self._commands[mask_change_vel_d, 0]).uniform_(-1.0, 1.0)
@@ -338,6 +337,8 @@ class AnymalCEnv(DirectRLEnv):
             self._commands[mask_force__, 0] = 0.0
 
         
+        
+        
         self._previous_actions = self._actions.clone()
         height_data = None
         if isinstance(self.cfg, AnymalCRoughEnvCfg):
@@ -355,7 +356,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._robot.data.joint_vel,
                     height_data,
                     self._actions,
-                    self._forces,
+                    #self._forces,
                     self._forces_reference,
                     self._P,
                     self._state,
@@ -366,8 +367,6 @@ class AnymalCEnv(DirectRLEnv):
         )
         observations = {"policy": obs}
         return observations
-
-
 
     def _get_rewards(self) -> torch.Tensor:        
         # yaw tracking
@@ -594,20 +593,10 @@ class AnymalCEnv(DirectRLEnv):
             reward_path = "/home/emanuele/reward.txt"
             with open(reward_path, 'a') as file:
                 file.write(f"{torch.mean(reward2)}\n")
-            #std_path = "/home/emanuele/std.txt"
-            #with open(std_path, 'a') as file:
-            #    file.write(f"{torch.std(reward)}\n")
             percentage_path = "/home/emanuele/percentage.txt"
             with open(percentage_path, 'a') as file:
                 file.write(f"{self.percentage_at_max_level}\n")
-            #mae_path = "/home/emanuele/mae.txt"
-            #with open(mae_path, 'a') as file:
-            #    file.write(f"{self.mae}\n")
-            #iteration_path = "/home/emanuele/iteration.txt"
-            #with open(iteration_path, 'a') as file:
-            #    file.write(f"{self.learning_iteration}\n")
             self.learning_iteration += 1
-
 
             force_tracking2_path = "/home/emanuele/debug/force_tracking2.txt"
             with open(force_tracking2_path, 'a') as file:
@@ -705,7 +694,7 @@ class AnymalCEnv(DirectRLEnv):
             self.count_int = 0
 
         self._forces_reference[env_ids] = 0.0
-        if (self.learning_iteration < 500):
+        if (self.learning_iteration < 800):
             cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
             cube_not_used = torch.tensor([1.15, 0.0, -10.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
             

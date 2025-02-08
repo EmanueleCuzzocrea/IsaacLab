@@ -279,10 +279,10 @@ class AnymalCEnv(DirectRLEnv):
         self._phase = torch.zeros(self.num_envs, 1, device=self.device)
         self._ok = torch.zeros(self.num_envs, 1, device=self.device)
         self._frequency = torch.zeros(self.num_envs, 1, device=self.device)
-        self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
-        self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
-        self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
+        #self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
+        #self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
+        #self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
+        #self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
 
         #self._sequenza_target_1 = torch.tensor([1, 1, 0, 0], device=self.device)
         #self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
@@ -294,10 +294,10 @@ class AnymalCEnv(DirectRLEnv):
         #self._sequenza_target_3 = torch.tensor([0, 1, 0, 1], device=self.device)
         #self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
 
-        #self._sequenza_target_1 = torch.tensor([0, 1, 1, 1], device=self.device)
-        #self._sequenza_target_2 = torch.tensor([1, 0, 1, 1], device=self.device)
-        #self._sequenza_target_3 = torch.tensor([1, 1, 0, 1], device=self.device)
-        #self._sequenza_target_4 = torch.tensor([1, 1, 1, 0], device=self.device)
+        self._sequenza_target_1 = torch.tensor([0, 1, 1, 1], device=self.device)
+        self._sequenza_target_2 = torch.tensor([1, 0, 1, 1], device=self.device)
+        self._sequenza_target_3 = torch.tensor([1, 1, 0, 1], device=self.device)
+        self._sequenza_target_4 = torch.tensor([1, 1, 1, 0], device=self.device)
 
         self._state_1 = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device)
         self._state_2 = torch.tensor([0.0, 1.0, 0.0, 0.0], device=self.device)
@@ -388,7 +388,7 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        self.a += 0.0005*(50.0 - self._forces[0,0].item())
+        self.a += 0.00005*(40.0 - self._forces[0,0].item())
         self._forces_reference[:, 0] = 40.0
         if (self._forces[0,0].item() > 0.0):
             self._commands[:, 0] = 0.0
@@ -414,7 +414,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._robot.data.joint_vel,
                     height_data,
                     self._actions,
-                    self._forces,
+                    #self._forces,
                     self._forces_reference,
                     self._P,
                     self._state,
@@ -524,7 +524,7 @@ class AnymalCEnv(DirectRLEnv):
         z_component = torch.abs(interaction_force[:, 0])
         #z_component *= torch.cos(self.yaw[:, 0])
         self._forces[:,0] = z_component
-        print(self._forces)
+        #print(self._forces)
 
         # interaction force position
         pose_interation = self._contact_sensor.data.pos_w[:, self._interaction_ids].squeeze(dim=1)

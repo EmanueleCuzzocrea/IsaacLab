@@ -188,7 +188,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1)),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, -1.0, 0.5)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, -0.9, 0.5)),
     )
 
     # reward scales
@@ -270,10 +270,10 @@ class AnymalCEnv(DirectRLEnv):
         self._phase = torch.zeros(self.num_envs, 1, device=self.device)
         self._ok = torch.zeros(self.num_envs, 1, device=self.device)
         self._frequency = torch.zeros(self.num_envs, 1, device=self.device)
-        #self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
-        #self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
-        #self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
-        #self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
+        self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
+        self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
+        self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
+        self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
 
         #self._sequenza_target_1 = torch.tensor([1, 1, 0, 0], device=self.device)
         #self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
@@ -285,10 +285,10 @@ class AnymalCEnv(DirectRLEnv):
         #self._sequenza_target_3 = torch.tensor([0, 1, 0, 1], device=self.device)
         #self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
 
-        self._sequenza_target_1 = torch.tensor([0, 1, 1, 1], device=self.device)
-        self._sequenza_target_2 = torch.tensor([1, 0, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([1, 1, 0, 1], device=self.device)
-        self._sequenza_target_4 = torch.tensor([1, 1, 1, 0], device=self.device)
+        #self._sequenza_target_1 = torch.tensor([0, 1, 1, 1], device=self.device)
+        #self._sequenza_target_2 = torch.tensor([1, 0, 1, 1], device=self.device)
+        #self._sequenza_target_3 = torch.tensor([1, 1, 0, 1], device=self.device)
+        #self._sequenza_target_4 = torch.tensor([1, 1, 1, 0], device=self.device)
 
         self._state_1 = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device)
         self._state_2 = torch.tensor([0.0, 1.0, 0.0, 0.0], device=self.device)
@@ -377,11 +377,11 @@ class AnymalCEnv(DirectRLEnv):
 
     def _get_observations(self) -> dict:
         self.a += 0.0005*(50.0 - self._forces[0,0].item())
-        self._forces_reference[:, 0] = 40.0
+        self._forces_reference[:, 0] = 10.0
         if (self._forces[0,0].item() > 0.0):
             self._commands[:, 1] = 0.0
         else:
-            self._commands[:, 1] = -0.2
+            self._commands[:, 1] = -0.1
         self._commands[:, 0] = 0.1
         self._commands[:, 2] = 0.0
         
@@ -402,7 +402,7 @@ class AnymalCEnv(DirectRLEnv):
                     self._robot.data.joint_vel,
                     height_data,
                     self._actions,
-                    self._forces,
+                    #self._forces,
                     self._forces_reference,
                     self._P,
                     self._state,
@@ -597,13 +597,9 @@ class AnymalCEnv(DirectRLEnv):
         
         # Sample new commands
         self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.5, 0.5)
-    
-        self._commands[env_ids, 2] = 0.0
-        self._commands[env_ids,0] = 0.1
-        self._commands[env_ids,1] = 0.0
 
         # Sample new force commands
-        #self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 10.0)
+        self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 10.0)
         self.a = 0.0
 
         # Force MSE
@@ -639,7 +635,7 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
 
-        cube_used = torch.tensor([0.0, -1.0, -0.1, 0.0, 0.0, 0.0, 0.0], device=self.device)
+        cube_used = torch.tensor([0.0, -0.9, -0.1, 0.0, 0.0, 0.0, 0.0], device=self.device)
         self._cuboid.write_root_pose_to_sim(default_root_state[:, :7] + cube_used, env_ids)
 
     
