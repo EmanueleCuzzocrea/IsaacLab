@@ -306,7 +306,7 @@ class AnymalCEnv(DirectRLEnv):
             mask_d = (torch.arange(4096, device=self.device) < 2000)
 
             self._commands[mask_p, 1] = 0.1
-            self._commands[mask_p, 0] = 0.2
+            self._commands[mask_p, 0] = 0.1
             mask_force__ = self._forces.squeeze(dim=1) > 0.0001
             self._commands[mask_force__, 0] = 0.0
 
@@ -332,7 +332,7 @@ class AnymalCEnv(DirectRLEnv):
             self._commands[mask6, 1] = 0.0
         else:
             self._commands[:, 1] = 0.1
-            self._commands[:, 0] = 0.2
+            self._commands[:, 0] = 0.1
             mask_force__ = self._forces.squeeze(dim=1) > 0.0001
             self._commands[mask_force__, 0] = 0.0
 
@@ -706,16 +706,18 @@ class AnymalCEnv(DirectRLEnv):
             cube_pose[:, :3] += self._terrain.env_origins[dispari]
             self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_not_used, dispari)
 
-            random_force = random.choice([20, 40, 60])
-            self._forces_reference[pari] = random_force
+            #random_force = random.choice([20, 40, 60])
+            #self._forces_reference[pari] = random_force
+            self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(10.0, 60.0)
         else:
             cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
             cube_pose = self._robot.data.default_root_state[env_ids]
             cube_pose[:, :3] += self._terrain.env_origins[env_ids]
             self._cuboid.write_root_pose_to_sim(cube_pose[:, :7] + cube_used, env_ids)
 
-            random_force = random.choice([20, 40, 60])
-            self._forces_reference[env_ids] = random_force
+            #random_force = random.choice([20, 40, 60])
+            #self._forces_reference[env_ids] = random_force
+            self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 60.0)
 
 
 

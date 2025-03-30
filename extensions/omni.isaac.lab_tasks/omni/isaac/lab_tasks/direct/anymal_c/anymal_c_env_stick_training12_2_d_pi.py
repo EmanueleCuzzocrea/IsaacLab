@@ -19,10 +19,9 @@ from omni.isaac.lab.markers.config import FRAME_MARKER_CFG
 from omni.isaac.lab.utils.math import subtract_frame_transforms
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.signal import butter, filtfilt, lfilter
-from omni.isaac.lab.utils.assets import ISAAC_NUCLEUS_DIR, ISAACLAB_NUCLEUS_DIR
+from scipy.signal import butter, filtfilt
 # Pre-defined configs
-from omni.isaac.lab_assets.anymal import ANYMAL_STICK_F_CFG  # isort: skip
+from omni.isaac.lab_assets.anymal import ANYMAL_STICK_D_CFG  # isort: skip
 from omni.isaac.lab.terrains.config.rough import ROUGH_TERRAINS_CFG2  # isort: skip
 
 
@@ -60,40 +59,6 @@ class EventCfg:
         },
     )
 
-    #reset_base = EventTerm(
-    #    func=mdp.reset_root_state_uniform,
-    #    mode="reset",
-    #    params={
-    #        "pose_range": {"x": (-0.5, 0.5), "y": (-0.5, 0.5), "yaw": (-3.14, 3.14)},
-    #        "velocity_range": {
-    #            "x": (-0.5, 0.5),
-    #            "y": (-0.5, 0.5),
-    #            "z": (-0.5, 0.5),
-    #            "roll": (-0.5, 0.5),
-    #            "pitch": (-0.5, 0.5),
-    #            "yaw": (-0.5, 0.5),
-    #        },
-    #    },
-    #)
-
-    #velocity_base = EventTerm(
-    #    func=mdp.push_by_setting_velocity,
-    #    mode="reset",
-    #    is_global_time=True,
-    #    interval_range_s=(0.0,0.0),
-    #    params={
-    #        "asset_cfg": SceneEntityCfg("robot", body_names="base"),
-    #        "velocity_range": {
-    #            #"x": (0.0, 0.0),
-    #            #"y": (0., 0.0),
-    #            #"z": (-0.0, 0.0),
-    #            #"roll": (-0.0, 0.0),
-    #            #"pitch": (-0.0, 0.0),
-    #            #"yaw": (-0.0, 0.0),
-    #        },
-    #    },
-    #)
-
 
 @configclass
 class AnymalCFlatEnvCfg(DirectRLEnvCfg):
@@ -118,6 +83,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             restitution=0.0,
         ),
     )
+
     terrain = TerrainImporterCfg(
         prim_path="/World/ground",
         terrain_type="plane",
@@ -160,7 +126,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     events: EventCfg = EventCfg()
 
     # robot
-    robot: ArticulationCfg = ANYMAL_STICK_F_CFG.replace(prim_path="/World/envs/env_.*/Robot")
+    robot: ArticulationCfg = ANYMAL_STICK_D_CFG.replace(prim_path="/World/envs/env_.*/Robot")
     
     # sensors
     contact_sensor: ContactSensorCfg = ContactSensorCfg(
@@ -170,7 +136,7 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
     cuboid_cfg: RigidObjectCfg = RigidObjectCfg(
         prim_path=f"/World/envs/env_.*/Cuboid",
         spawn=sim_utils.CuboidCfg(
-            size=(0.5, 10.0, 1.0),
+            size=(10.0, 0.5, 1.0),
             physics_material=sim_utils.RigidBodyMaterialCfg(
                 static_friction=0.5,
                 dynamic_friction=0.5,
@@ -187,38 +153,28 @@ class AnymalCFlatEnvCfg(DirectRLEnvCfg):
             collision_props=sim_utils.CollisionPropertiesCfg(),
             visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.1, 0.1, 0.1)),
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(1.15, 0.0, 0.6)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.85, -0.85, 0.5), rot=(1.0, 0.0, 0.0, 0.415)),
     )
 
     # reward scales
-    lin_vel_reward_scale_x = 1.0*3
-    lin_vel_reward_scale_y = 1.0*3
+    lin_vel_reward_scale_x = 3.0
+    lin_vel_reward_scale_y = 3.0
     z_vel_reward_scale = -2.0
     ang_vel_reward_scale = -0.05*3
     joint_torque_reward_scale = -2.5e-5
-    joint_accel_reward_scale = 0.0 #-2.5e-7
-    joint_vel_reward_scale = 0.0 #-2.5e-7
+    joint_accel_reward_scale = -2.5e-7
+    joint_vel_reward_scale = 0.0
     action_rate_reward_scale = -0.01
     feet_air_time_reward_scale = 0.0
     undersired_contact_reward_scale = -1.0
     flat_orientation_reward_scale = -5.0*2
 
-    track_yaw = 1.0
-    force_variance = 0.0 #-0.000001
-    force_acceleration = 0.0 #-0.001
-    force_min_max = 0.0
+    track_yaw = 2.0
     track_force = 0.0
+    track_force2 = 0.0
+    joint_deviation = -1.5
+    energy = -0.00005
 
-    #lin_vel_reward_scale = 1.0*5
-    #yaw_rate_reward_scale = 0.5*5
-    #z_vel_reward_scale = -2.0*5
-    #ang_vel_reward_scale = -0.05*8
-    #joint_torque_reward_scale = -2.5e-8
-    #joint_accel_reward_scale = -2.5e-7*6
-    #action_rate_reward_scale = -0.01*6
-    #feet_air_time_reward_scale = 0.0
-    #undersired_contact_reward_scale = -1.0
-    #flat_orientation_reward_scale = -5.0*3
 
 
 @configclass
@@ -271,11 +227,11 @@ class AnymalCEnv(DirectRLEnv):
 
         # X/Y linear velocity and yaw angular velocity commands
         self._commands = torch.zeros(self.num_envs, 3, device=self.device)
-        self._commands_b = torch.zeros(self.num_envs, 3, device=self.device)
 
         # Reward machines parameters
         self._P = torch.zeros(self.num_envs, 4, device=self.device)
         self._state = torch.zeros(self.num_envs, 4, device=self.device)
+        self._stato = torch.zeros(self.num_envs, 1, device=self.device)
         self._phase = torch.zeros(self.num_envs, 1, device=self.device)
         self._ok = torch.zeros(self.num_envs, 1, device=self.device)
         self._frequency = torch.zeros(self.num_envs, 1, device=self.device)
@@ -320,9 +276,6 @@ class AnymalCEnv(DirectRLEnv):
                 "feet_air_time",
                 "undesired_contacts",
                 "flat_orientation_l2",
-                "force_variance",
-                "force_acceleration",
-                "force_min_max",
                 "force_tracking",
             ]
         }
@@ -332,20 +285,20 @@ class AnymalCEnv(DirectRLEnv):
         self._undesired_contact_body_ids, _ = self._contact_sensor.find_bodies(".*THIGH")
         self._interaction_ids, _ = self._contact_sensor.find_bodies("interaction")
 
-        self._forces = torch.zeros(self.num_envs, 1, device=self.device)
-        self._forces_boolean = torch.zeros(self.num_envs, 1, device=self.device)
         self.yaw = torch.zeros(self.num_envs, 1, device=self.device)
-
-        self._forces_buffer = torch.zeros(self.num_envs, 500, device=self.device)
-        self._pos_buffer = torch.zeros(self.num_envs, 500, device=self.device)
-        self._vel_buffer = torch.zeros(self.num_envs, 500, device=self.device)
+        self._forces = torch.zeros(self.num_envs, 1, device=self.device)
         self._forces_reference = torch.zeros(self.num_envs, 1, device=self.device)
-        self._iteration = torch.zeros(self.num_envs, 1, device=self.device)
+        self._forces_buffer = torch.zeros(self.num_envs, 500, device=self.device)
+        self._forces_filtered = torch.zeros(self.num_envs, 1, device=self.device)
 
-        self._extra_reward2 = torch.zeros(self.num_envs, 1, device=self.device)
+        self._vel_x_buffer = torch.zeros(self.num_envs, 500, device=self.device)
+        self._vel_y_buffer = torch.zeros(self.num_envs, 500, device=self.device)
 
+        self._power = torch.zeros(self.num_envs, 1, device=self.device)
+        self._power_buffer = torch.zeros(self.num_envs, 500, device=self.device)
 
-        self.a = 0.0
+        self._integrator = torch.zeros(self.num_envs, 1, device=self.device)
+        self._proportional = torch.zeros(self.num_envs, 1, device=self.device)
 
 
         # Plot
@@ -388,12 +341,13 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        self._forces_reference[:, 0] = 20
-        if (self._forces[0,0].item() > 0.0):
-            self._commands[:, 0] = 0.0
-        else:
-            self._commands[:, 0] = 0.1
-        self._commands[:, 1] = 0.1
+        self._forces_reference[:, 0] = 60.0
+        self._integrator[:, 0] += 0.00005*(self._forces_reference[:, 0] - self._forces[:, 0])
+        self._integrator[:, 0].clamp_(min=-0.5, max=0.5)
+        self._proportional[:, 0] = 0.0001*(self._forces_reference[:, 0] - self._forces[:, 0])
+        self._proportional[:, 0].clamp_(min=-0.5, max=0.5)
+        self._commands[:, 0] = 0.1
+        self._commands[:, 1] = self._integrator[:, 0] + self._proportional[:, 0]
         self._commands[:, 2] = 0.0
         
         self._previous_actions = self._actions.clone()
@@ -413,8 +367,6 @@ class AnymalCEnv(DirectRLEnv):
                     self._robot.data.joint_vel,
                     height_data,
                     self._actions,
-                    #self._forces,
-                    self._forces_reference,
                     self._P,
                     self._state,
                 )
@@ -439,7 +391,6 @@ class AnymalCEnv(DirectRLEnv):
 
         yaw_error = torch.square(self._commands[:, 2] - self.yaw[:, 0])
         yaw_error_mapped = torch.exp(-yaw_error / 0.25)
-
 
         # linear velocity tracking_x
         lin_vel_error_x = torch.square(self._commands[:, 0] - self._robot.data.root_lin_vel_b[:, 0])
@@ -478,15 +429,19 @@ class AnymalCEnv(DirectRLEnv):
 
         maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._state == self._state_1).all(dim=1)
         self._state[:, :][maschera1] = self._state_2
+        self._stato[:, :][maschera1] = 1
         self._phase[:, 0][maschera1] = 0
         maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._state == self._state_2).all(dim=1)
         self._state[:, :][maschera2] = self._state_3
+        self._stato[:, :][maschera2] = 2
         self._phase[:, 0][maschera2] = 0
         maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == self._state_3).all(dim=1)
         self._state[:, :][maschera3] = self._state_4
+        self._stato[:, :][maschera3] = 3
         self._phase[:, 0][maschera3] = 0
         maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == self._state_4).all(dim=1)
         self._state[:, :][maschera4] = self._state_1
+        self._stato[:, :][maschera4] = 4
         self._phase[:, 0][maschera4] = 0
 
         #maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._phase > 0).all(dim=1) & (self._state == 0).all(dim=1)
@@ -501,7 +456,8 @@ class AnymalCEnv(DirectRLEnv):
         #maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._phase > 5).all(dim=1) & (self._state == 3).all(dim=1)
         #self._state[:, 0][maschera4] = 0
         #self._phase[:, 0][maschera4] = 0
-        
+
+
 
         last_air_time = self._contact_sensor.data.last_air_time[:, self._feet_ids]
         air_time = torch.sum((last_air_time - 0.5) * first_contact, dim=1) * (
@@ -520,56 +476,59 @@ class AnymalCEnv(DirectRLEnv):
 
         # interaction force
         interaction_force = self._contact_sensor.data.net_forces_w[:, self._interaction_ids].squeeze(dim=1)
-        z_component = torch.abs(interaction_force[:, 0])
-        #z_component *= torch.cos(self.yaw[:, 0])
-        self._forces[:,0] = z_component
+        x_component = torch.abs(interaction_force[:, 0])
+        y_component = torch.abs(interaction_force[:, 1])
+        d_component = (x_component + y_component)/1.4142
+        #d_component = torch.sqrt(x_component**2 + y_component**2)
+        self._forces[:,0] = d_component
         #print(self._forces)
-
-        performance_force_path = "/home/emanuele/metrics/Performance/force.txt"
-        with open(performance_force_path, 'a') as file:
-            file.write(f"{self._forces[0,0].item()}\n")
-
-        # interaction force position
-        pose_interation = self._contact_sensor.data.pos_w[:, self._interaction_ids].squeeze(dim=1)
-        x_component = torch.abs(pose_interation[:, 0])
         
         # interaction force buffer
         self._forces_buffer[:, :-1] = self._forces_buffer[:, 1:].clone()
-        self._forces_buffer[:, -1] = self._forces[:, 0].squeeze()
+        self._forces_buffer[:, -1] = self._forces[:,0].squeeze()
 
-        # interaction position buffer
-        self._pos_buffer[:, :-1] = self._pos_buffer[:, 1:].clone()
-        self._pos_buffer[:, -1] = x_component.squeeze()
+        # velocity x buffer
+        self._vel_x_buffer[:, :-1] = self._vel_x_buffer[:, 1:].clone()
+        self._vel_x_buffer[:, -1] = self._robot.data.root_lin_vel_b[:,0].squeeze()
 
-        # velocity buffer
-        self._vel_buffer[:, :-1] = self._vel_buffer[:, 1:].clone()
-        self._vel_buffer[:, -1] = self._robot.data.root_lin_vel_b[:, 1].squeeze()
+        # velocity y buffer
+        self._vel_y_buffer[:, :-1] = self._vel_y_buffer[:, 1:].clone()
+        self._vel_y_buffer[:, -1] = self._robot.data.root_lin_vel_b[:,1].squeeze()
+
+        # power buffer
+        self._power[:, 0] = torch.sum(torch.abs(self._robot.data.applied_torque * self._robot.data.joint_vel), dim=1)
+        self._power_buffer[:, :-1] = self._power_buffer[:, 1:].clone()
+        self._power_buffer[:, -1] = self._power[:,0].squeeze()
        
+       
+        ## Butter filter
+        #data_np = self._forces_buffer.cpu().numpy()
+        #fs = 50.0
+        #cutoff = 0.5
+        #order = 2
+        #nyquist = 0.5 * fs
+        #normal_cutoff = cutoff / nyquist
+        #b, a = butter(order, normal_cutoff, btype='low', analog=False)
+        #filtered_data = filtfilt(b, a, data_np, axis=1)
+        #filtered_tensor = torch.tensor(filtered_data[:, -1], device=self.device)
+        #self._forces_filtered[:, 0] = filtered_tensor
+        ##print(self._forces_filtered)
+
+
+        # Collect data
         self.count += 1
-        #print(self.count)
         self.t_list.append(self.count * (4/200))
-        self.force_list.append(self._forces[0,0].item())
-        #self.force_list.append(self._robot.data.root_lin_vel_b[0,1].item())
-        #self.force_feet1_list.append(x_component.item())
-        
+        #self.force_list.append(self._forces[0,0].item())
+        self.force_list.append(self._stato[0,0].item())
+        self.force_feet1_list.append(self._phase[0,0].item())
+        #self.force_list.append(self._integrator[0,0].item())
+        #self.force_list.append(self._forces_filtered[0,0].item())
+        #self.force_list.append(self._robot.data.root_lin_vel_b[0,0].item())
+
 
         # force tracking
         force_error = torch.square(self._forces_reference[:, 0] - self._forces[:, 0])
         force_error_mapped = torch.exp(-force_error / 0.25)
-        
-        # force variance
-        force_variance = self._forces_buffer.var(dim=1)
-
-        # force acceleration
-        first_differences = self._forces_buffer[:, 1:] - self._forces_buffer[:, :-1]
-        second_differences = first_differences[:, 1:] - first_differences[:, :-1]
-        force_acceleration = second_differences.abs().mean(dim=1)
-
-        # force min max
-        force_min = self._forces_buffer.min(dim=1).values
-        force_max = self._forces_buffer.max(dim=1).values
-        force_min_max = force_max - force_min
-
 
 
         rewards = {
@@ -585,19 +544,9 @@ class AnymalCEnv(DirectRLEnv):
             "feet_air_time": air_time * self.cfg.feet_air_time_reward_scale * self.step_dt,
             "undesired_contacts": contacts * self.cfg.undersired_contact_reward_scale * self.step_dt,
             "flat_orientation_l2": flat_orientation * self.cfg.flat_orientation_reward_scale * self.step_dt,
-            "force_variance": force_variance * self.cfg.force_variance * self.step_dt,
-            "force_acceleration": force_acceleration * self.cfg.force_acceleration * self.step_dt,
-            "force_min_max": force_min_max * self.cfg.force_min_max * self.step_dt,
             "force_tracking": force_error_mapped * self.cfg.track_force * self.step_dt,
         }
         reward = torch.sum(torch.stack(list(rewards.values())), dim=0)
-
-        #mask_extra = self._extra_reward > 0
-        #reward[mask_extra] *= 2.0
-#
-        #mask_force = self._forces.squeeze(dim=1) > 0
-        #reward[mask_force] += 0.001
-        #print(reward)
 
         # Logging
         for key, value in rewards.items():
@@ -621,32 +570,20 @@ class AnymalCEnv(DirectRLEnv):
         self._actions[env_ids] = 0.0
         self._previous_actions[env_ids] = 0.0
         
-        # Sample new commands
-        self._commands[env_ids] = torch.zeros_like(self._commands[env_ids]).uniform_(-0.5, 0.5)
+        # Force MAE
+        force_mae = torch.mean(torch.abs(self._forces_reference[env_ids] - self._forces_buffer[env_ids]), dim=1)
+        print("Force MAE: ", force_mae)
+
+        # Velocity MAE
+        #velocity_mae = torch.mean(((torch.abs(0.07 - self._vel_x_buffer[env_ids]) + torch.abs(0.07 - self._vel_y_buffer[env_ids]))/2), dim=1)
+        diag = (self._vel_x_buffer[env_ids] + self._vel_y_buffer[env_ids])/1.4142
+        velocity_mae = torch.mean(torch.abs(0.1 - diag), dim=1)
+        print("Velocity MAE: ", velocity_mae)
+
+        # Power MAE
+        power_mae = torch.mean(torch.abs(0.0 - self._power_buffer[env_ids]), dim=1)
+        print("Power MAE: ", power_mae)
     
-        self._commands[env_ids, 2] = 0.0
-        self._commands[env_ids,0] = 0.1
-        self._commands[env_ids,1] = 0.0
-
-        # Sample new force commands
-        #self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 10.0)
-        self.a = 0.0
-        
-        # Force MSE
-        mae = torch.mean(torch.abs(self._forces_reference[env_ids] - self._forces_buffer[env_ids]))
-        print(mae)
-        self._forces_buffer[env_ids, :] = 0.0
-
-        ## Position MSE
-        #pos_mean = torch.mean(self._pos_buffer[:, :])
-        #pos_mse = torch.mean((pos_mean - self._pos_buffer)**2)
-        #print("Position MSE: ", pos_mse.item())
-        #self._pos_buffer[env_ids, :] = 0.0
-
-        ## Velocity MSE
-        #vel_mse = torch.mean((0.1 - self._vel_buffer[env_ids])**2)
-        #print("Velocity MSE: ", vel_mse.item())
-        self._vel_buffer[env_ids, :] = 0.0
 
         # Reward machines
         self._P[env_ids, :] = 0
@@ -655,6 +592,7 @@ class AnymalCEnv(DirectRLEnv):
         self._ok[env_ids, 0] = 0
         self._frequency[env_ids, 0] = 3
       
+
         # Reset robot state
         joint_pos = self._robot.data.default_joint_pos[env_ids]
         joint_vel = self._robot.data.default_joint_vel[env_ids]
@@ -663,12 +601,20 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.write_root_pose_to_sim(default_root_state[:, :7], env_ids)
         self._robot.write_root_velocity_to_sim(default_root_state[:, 7:], env_ids)
         self._robot.write_joint_state_to_sim(joint_pos, joint_vel, None, env_ids)
-
         
-        cube_used = torch.tensor([1.15, 0.0, -0.1, 0.0, 0.0, 0.0, 0.0], device=self.device)
+
+        # Reset cube
+        cube_used = torch.tensor([0.85, -0.85, -0.1, 0.0, 0.0, 0.0, 0.415], device=self.device)
         self._cuboid.write_root_pose_to_sim(default_root_state[:, :7] + cube_used, env_ids)
 
-    
+
+        # Reset buffers
+        self._forces_buffer[env_ids, :] = 0.0
+        self._vel_x_buffer[env_ids, :] = 0.0
+        self._vel_y_buffer[env_ids, :] = 0.0
+        self._power_buffer[env_ids, :] = 0.0
+        self._integrator[env_ids, :] = 0.0
+
 
         # Logging
         extras = dict()
@@ -684,13 +630,23 @@ class AnymalCEnv(DirectRLEnv):
         self.extras["log"].update(extras)
 
 
-
         # plot
         if (self.count > 10):
-            #file_path = "/home/emanuele/metrics/force.txt"
-            #with open(file_path, 'w') as file:
-            #    for value in mae:
-            #        file.write(f"{value.item()}\n")
+            force_path = "/home/emanuele/metrics/force.txt"
+            with open(force_path, 'w') as file:
+                for value in force_mae:
+                    file.write(f"{value.item()}\n")
+
+            velocity_path = "/home/emanuele/metrics/velocity.txt"
+            with open(velocity_path, 'w') as file:
+                for value in velocity_mae:
+                    file.write(f"{value.item()}\n")
+
+            power_path = "/home/emanuele/metrics/power.txt"
+            with open(power_path, 'w') as file:
+                for value in power_mae:
+                    file.write(f"{value.item()}\n")
+
 
 
 
@@ -698,7 +654,7 @@ class AnymalCEnv(DirectRLEnv):
 
             # force plot
             plt.plot(self.t_list, self.force_list, label='Interaction force')
-            #plt.plot(self.t_list, self.force_feet1_list, label='Feet1 force')
+            plt.plot(self.t_list, self.force_feet1_list, label='Feet1 force')
             #plt.plot(self.t_list, self.force_feet2_list, label='Feet2 force')
             #plt.plot(self.t_list, self.force_feet3_list, label='Feet3 force')
             #plt.plot(self.t_list, self.force_feet4_list, label='Feet4 force')

@@ -215,10 +215,10 @@ class AnymalCEnv(DirectRLEnv):
         self._extra_reward2 = torch.zeros(self.num_envs, 1, device=self.device)
         self._extra_reward3 = torch.zeros(self.num_envs, 1, device=self.device)
         self._transition_cost = torch.zeros(self.num_envs, 1, device=self.device)
-        self._sequenza_target_1 = torch.tensor([0, 1, 1, 1], device=self.device)
-        self._sequenza_target_2 = torch.tensor([1, 0, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([1, 1, 0, 1], device=self.device)
-        self._sequenza_target_4 = torch.tensor([1, 1, 1, 0], device=self.device)
+        self._sequenza_target_1 = torch.tensor([1, 0, 0, 1], device=self.device)
+        self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
+        self._sequenza_target_3 = torch.tensor([0, 1, 1, 0], device=self.device)
+        self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
 
         self._state_1 = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device)
         self._state_2 = torch.tensor([0.0, 1.0, 0.0, 0.0], device=self.device)
@@ -306,10 +306,10 @@ class AnymalCEnv(DirectRLEnv):
             mask_p = (torch.arange(4096, device=self.device) >= 2000)
             mask_d = (torch.arange(4096, device=self.device) < 2000)
 
-            self._commands[mask_p, 1] = 0.1
             self._integrator[:, 0] += 0.00005*(self._forces_reference[:, 0] - self._forces[:, 0])
             self._integrator[:, 0].clamp_(min=-0.5, max=0.5)
             self._commands[mask_p, 0] = self._integrator[mask_p, 0]
+            self._commands[mask_p, 1] = 0.1
 
             self.counter_vel[:, 0] += 1
             mask_change_vel_d = (self.counter_vel[:, 0] > 100) & mask_d
@@ -335,13 +335,11 @@ class AnymalCEnv(DirectRLEnv):
             mask6 = (self._commands[:, 1] < 0.05) & (self._commands[:, 1] > -0.05)
             self._commands[mask6, 1] = 0.0
         else:
-            self._commands[:, 1] = 0.1
             self._integrator[:, 0] += 0.00005*(self._forces_reference[:, 0] - self._forces[:, 0])
             self._integrator[:, 0].clamp_(min=-0.5, max=0.5)
             self._commands[:, 0] = self._integrator[:, 0]
+            self._commands[:, 1] = 0.1
 
-        
-        
         
         self._previous_actions = self._actions.clone()
         height_data = None
@@ -422,7 +420,7 @@ class AnymalCEnv(DirectRLEnv):
         self._P[:, :][mask_contact] = 1
         self._P[:, :][mask_air] = 0
 
-        mask_phase = (self._phase[:, 0] < 19)
+        mask_phase = (self._phase[:, 0] < 9)
         self._phase[:, 0][mask_phase] += 1
         
         self._extra_reward2[:, 0] = 0
@@ -461,7 +459,7 @@ class AnymalCEnv(DirectRLEnv):
         self._ok[:, 0][maschera3_ok] += 1
         maschera3_2 = (self._P == self._sequenza_target_3).all(dim=1) & (self._state == self._state_4).all(dim=1) & (self._ok < 1).all(dim=1)
         self._extra_reward3[:, 0][maschera3_2] = 1
-
+        
 
         maschera4_1 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == self._state_4).all(dim=1)
         self._state[:, :][maschera4_1] = self._state_1
@@ -473,26 +471,27 @@ class AnymalCEnv(DirectRLEnv):
         maschera4_2 = (self._P == self._sequenza_target_4).all(dim=1) & (self._state == self._state_1).all(dim=1) & (self._ok < 1).all(dim=1)
         self._extra_reward2[:, 0][maschera4_2] = 1
 
-
         self._extra_reward2_ = self._extra_reward2.squeeze()
         self._extra_reward3_ = self._extra_reward3.squeeze()
         self._transition_cost_ = self._transition_cost.squeeze()
 
+
+
         #self._extra_reward = torch.zeros(self.num_envs, 1, device=self.device)
-        #maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._phase > 0).all(dim=1) & (self._state == 0).all(dim=1)
-        #self._state[:, 0][maschera1] = 1
+        #maschera1 = (self._P == self._sequenza_target_1).all(dim=1) & (self._phase >= 2).all(dim=1) & (self._state == self._state_1).all(dim=1)
+        #self._state[:, :][maschera1] = self._state_2
         #self._extra_reward[maschera1] = 2
         #self._phase[:, 0][maschera1] = 0
-        #maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._phase > 5).all(dim=1) & (self._state == 1).all(dim=1)
-        #self._state[:, 0][maschera2] = 2
+        #maschera2 = (self._P == self._sequenza_target_2).all(dim=1) & (self._phase >= 2).all(dim=1) & (self._state == self._state_2).all(dim=1)
+        #self._state[:, :][maschera2] = self._state_3
         #self._extra_reward[maschera2] = 2
         #self._phase[:, 0][maschera2] = 0
-        #maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._phase > 0).all(dim=1) & (self._state == 2).all(dim=1)
-        #self._state[:, 0][maschera3] = 3
+        #maschera3 = (self._P == self._sequenza_target_3).all(dim=1) & (self._phase >= 2).all(dim=1) & (self._state == self._state_3).all(dim=1)
+        #self._state[:, :][maschera3] = self._state_4
         #self._extra_reward[maschera3] = 2
         #self._phase[:, 0][maschera3] = 0
-        #maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._phase > 5).all(dim=1) & (self._state == 3).all(dim=1)
-        #self._state[:, 0][maschera4] = 0
+        #maschera4 = (self._P == self._sequenza_target_4).all(dim=1) & (self._phase >= 2).all(dim=1) & (self._state == self._state_4).all(dim=1)
+        #self._state[:, :][maschera4] = self._state_1
         #self._extra_reward[maschera4] = 2
         #self._phase[:, 0][maschera4] = 0
         #self._extra_reward = self._extra_reward.squeeze()
@@ -585,9 +584,6 @@ class AnymalCEnv(DirectRLEnv):
         mask_extra2_ = (self._extra_reward2_ > 0.5)
         reward[mask_extra2_] *= 1.5
         reward2[mask_extra2_] *= 1.5
-        
-        #mask_cost = (self._transition_cost_ > 0.5)
-        #reward[mask_cost] /= 1.2
 
         #mask_extra = (self._extra_reward > 0.5)
         #reward[mask_extra] *= 2.0
@@ -718,7 +714,7 @@ class AnymalCEnv(DirectRLEnv):
 
             #random_force = random.choice([10, 35, 60])
             #self._forces_reference[pari] = random_force
-            self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 60.0)
+            self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(10.0, 60.0)
         else:
             cube_used = torch.tensor([1.15, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
             cube_pose = self._robot.data.default_root_state[env_ids]
@@ -730,6 +726,7 @@ class AnymalCEnv(DirectRLEnv):
             #random_force = random.choice([10, 35, 60])
             #self._forces_reference[env_ids] = random_force
             self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 60.0)
+
 
 
         self._forces_buffer[env_ids, :] = 0.0

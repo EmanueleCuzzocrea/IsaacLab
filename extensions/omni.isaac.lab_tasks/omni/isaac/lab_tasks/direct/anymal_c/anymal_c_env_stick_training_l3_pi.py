@@ -215,10 +215,10 @@ class AnymalCEnv(DirectRLEnv):
         self._extra_reward2 = torch.zeros(self.num_envs, 1, device=self.device)
         self._extra_reward3 = torch.zeros(self.num_envs, 1, device=self.device)
         self._transition_cost = torch.zeros(self.num_envs, 1, device=self.device)
-        self._sequenza_target_1 = torch.tensor([1, 1, 0, 0], device=self.device)
-        self._sequenza_target_2 = torch.tensor([1, 1, 1, 1], device=self.device)
-        self._sequenza_target_3 = torch.tensor([0, 0, 1, 1], device=self.device)
-        self._sequenza_target_4 = torch.tensor([1, 1, 1, 1], device=self.device)
+        self._sequenza_target_1 = torch.tensor([0, 1, 1, 1], device=self.device)
+        self._sequenza_target_2 = torch.tensor([1, 0, 1, 1], device=self.device)
+        self._sequenza_target_3 = torch.tensor([1, 1, 0, 1], device=self.device)
+        self._sequenza_target_4 = torch.tensor([1, 1, 1, 0], device=self.device)
 
         self._state_1 = torch.tensor([1.0, 0.0, 0.0, 0.0], device=self.device)
         self._state_2 = torch.tensor([0.0, 1.0, 0.0, 0.0], device=self.device)
@@ -302,13 +302,13 @@ class AnymalCEnv(DirectRLEnv):
         self._robot.set_joint_position_target(self._processed_actions)        
 
     def _get_observations(self) -> dict:
-        if (self.learning_iteration < 835):
+        if (self.learning_iteration < 1000):
             mask_p = (torch.arange(4096, device=self.device) >= 2000)
             mask_d = (torch.arange(4096, device=self.device) < 2000)
 
-            self._commands[mask_p, 0] = 0.1
             self._integrator[:, 0] += 0.00005*(self._forces_reference[:, 0] - self._forces[:, 0])
             self._integrator[:, 0].clamp_(min=-0.5, max=0.5)
+            self._commands[mask_p, 0] = 0.1
             self._commands[mask_p, 1] = -self._integrator[mask_p, 0]
 
             self.counter_vel[:, 0] += 1
@@ -335,13 +335,11 @@ class AnymalCEnv(DirectRLEnv):
             mask6 = (self._commands[:, 1] < 0.05) & (self._commands[:, 1] > -0.05)
             self._commands[mask6, 1] = 0.0
         else:
-            self._commands[:, 0] = 0.1
             self._integrator[:, 0] += 0.00005*(self._forces_reference[:, 0] - self._forces[:, 0])
             self._integrator[:, 0].clamp_(min=-0.5, max=0.5)
+            self._commands[:, 0] = 0.1
             self._commands[:, 1] = -self._integrator[:, 0]
 
-        
-        
         
         self._previous_actions = self._actions.clone()
         height_data = None
@@ -512,7 +510,7 @@ class AnymalCEnv(DirectRLEnv):
         # interaction force
         interaction_force = self._contact_sensor.data.net_forces_w[:, self._interaction_ids].squeeze(dim=1)
         y_component = torch.abs(interaction_force[:, 1])
-        self._forces[:,0] = y_component
+        self._forces[:, 0] = y_component
 
 
 
@@ -702,7 +700,7 @@ class AnymalCEnv(DirectRLEnv):
             self.count_int = 0
 
         #self._forces_reference[env_ids] = 0.0
-        if (self.learning_iteration < 835):
+        if (self.learning_iteration < 1000):
             cube_used = torch.tensor([0.0, -0.9, 0.2, 0.0, 0.0, 0.0, 0.0], device=self.device)
             cube_not_used = torch.tensor([0.0, -0.9, -10.0, 0.0, 0.0, 0.0, 0.0], device=self.device)
             
@@ -716,10 +714,9 @@ class AnymalCEnv(DirectRLEnv):
 
             self.mae = torch.mean(torch.abs(self._forces_reference[pari] - self._forces_buffer[pari]))
 
-
             #random_force = random.choice([10, 35, 60])
             #self._forces_reference[pari] = random_force
-            self._forces_reference[env_ids] = torch.zeros_like(self._forces_reference[env_ids]).uniform_(10.0, 60.0)
+            self._forces_reference[pari] = torch.zeros_like(self._forces_reference[pari]).uniform_(10.0, 60.0)
         else:
             cube_used = torch.tensor([0.0, -0.9, 0.2, 0.0, 0.0, 0.0, 0.0], device=self.device)
             cube_pose = self._robot.data.default_root_state[env_ids]
